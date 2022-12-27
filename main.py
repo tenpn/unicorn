@@ -101,6 +101,17 @@ TEMP = [
   " #...# ",
   "  ###  ",
 ]
+WIND = [
+  "  #    ",
+  "   #   ",
+  "###  # ",
+  "      #",
+  "###### ",
+  "       ",
+  "####   ",
+  "    #  ",
+  "   #   ",
+]
 
 def draw_icon(icon, origin_x, origin_y, pen, second_pen=None):
   last_pen = pen
@@ -140,6 +151,15 @@ def draw_temp(forecast, y: int):
   col += 8
   
   graphics.text(temp, col, y+1, scale=0.5)
+  
+def draw_wind_humidity(forecast, y: int):
+  wind = str(forecast["current"]["wind_mph"]) + "mph"
+  humidity = str(forecast["current"]["humidity"]) + "%"
+  
+  col = 1
+  draw_icon(WIND, col, y, BLUE)
+  col += 9
+  graphics.text(wind, col, y+1, scale=0.5)
 
 # message to scroll
 rows = [
@@ -149,6 +169,7 @@ rows = [
   #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
   draw_temp,
   draw_minmax_temp,
+  draw_wind_humidity,
 ]
 
 gu.set_brightness(0.5)
