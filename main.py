@@ -3,8 +3,12 @@ from picographics import PicoGraphics, DISPLAY_GALACTIC_UNICORN
 from network_manager import NetworkManager
 import proj_secrets
 import time
+import machine
 import uasyncio
 import urequests
+
+# "overclock" from the sample code???
+machine.freq(200000000)
 
 # create a PicoGraphics framebuffer to draw into
 graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
@@ -82,6 +86,9 @@ rows = [
   f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
 ]
 
+gu.set_brightness(0.5)
+brightness_btn_prev : int = 0
+
 while True:
   now = time.ticks_ms()
   time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
@@ -100,6 +107,8 @@ while True:
     while current_scroll >= (current_width + SCROLL_PADDING):
       current_scroll -= (current_width + SCROLL_PADDING)
 
+  # if we scroll long text, we'll draw it again like it's wrapping around
+  
   graphics.set_pen(YELLOW)
   graphics.text(rows[current_row-1], round(1 - prev_scroll), prev_y, -1, 0.5);    
   if prev_scroll > 0:
@@ -115,6 +124,15 @@ while True:
     row_start_tickms = now
     prev_scroll = current_scroll
     current_scroll = 0
+    
+  brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
+    else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
+    else 0
+    
+  if brightness_btn != brightness_btn_prev and brightness_btn != 0:
+    gu.adjust_brightness(0.1 * brightness_btn)
+    
+  brightness_btn_prev = brightness_btn
 
   # update the display
   gu.update(graphics)
