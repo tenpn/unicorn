@@ -20,6 +20,8 @@ gu = GalacticUnicorn()
 BLACK = graphics.create_pen(0, 0, 0)
 YELLOW = graphics.create_pen(255, 255, 50)
 RED = graphics.create_pen(255, 50, 50)
+ORANGE = graphics.create_pen(255, 127, 50)
+BLUE = graphics.create_pen(50, 50, 255)
 
 SCROLL_DURATION = 0.4
 PAUSE_DURATION = 12
@@ -76,14 +78,77 @@ if forecast_req.status_code != 200:
 
 forecast = forecast_req.json()
 
+UP_ARROW = [
+  "   #   ",
+  "  ###  ",
+  " ##### ",
+  "#######",
+  "   #   ",
+  "   #   ",
+  "   #   ",
+  "   #   ",
+  "   #   ",
+]
+DOWN_ARROW = list(reversed(UP_ARROW))
+TEMP = [
+  "  ###  ",
+  "  # #  ",
+  "  # #  ",
+  "  #.#  ",
+  "  #.#  ",
+  "  #.#  ",
+  " #...# ",
+  " #...# ",
+  "  ###  ",
+]
+
+def draw_icon(icon, origin_x, origin_y, pen, second_pen=None):
+  last_pen = pen
+  graphics.set_pen(pen)
+  for y in range(len(icon)):
+    for x in range(len(icon[y])):
+      current_pen = pen if icon[y][x] == '#' \
+        else second_pen if icon[y][x] == '.' \
+        else None
+      if current_pen is not None:
+        if current_pen != last_pen:
+          graphics.set_pen(current_pen)
+          last_pen = current_pen          
+        graphics.pixel(origin_x + x, origin_y + y)
+
+def draw_minmax_temp(forecast, y: int):
+  temp_min = str(forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"])
+  temp_max = str(forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"])
+  
+  col = 1
+  draw_icon(DOWN_ARROW, col, y, BLUE)  
+  col += 8
+  
+  graphics.text(temp_min, col, y+1, scale=0.5)
+  min_width = graphics.measure_text(temp_min, scale=0.5)  
+  col += min_width
+  
+  draw_icon(UP_ARROW, col, y, ORANGE)
+  col += 8
+  graphics.text(temp_max, col, y+1, scale=0.5)
+  
+def draw_temp(forecast, y: int):
+  temp = f'{forecast["current"]["temp_c"]} ({forecast["current"]["feelslike_c"]})'
+  
+  col = 0
+  draw_icon(TEMP, col, y, BLUE, second_pen=RED)
+  col += 8
+  
+  graphics.text(temp, col, y+1, scale=0.5)
+
 # message to scroll
 rows = [
-  forecast["location"]["name"],
-  forecast["current"]["condition"]["text"],
-  f'Temp {forecast["current"]["temp_c"]}c (feels like {forecast["current"]["feelslike_c"]}c)',
-  f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
+  #forecast["current"]["condition"]["text"],
+  #f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
   #"Next train: 3.35pm",
-  f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
+  #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
+  draw_temp,
+  draw_minmax_temp,
 ]
 
 gu.set_brightness(0.5)
@@ -96,6 +161,7 @@ while True:
   graphics.set_pen(BLACK)
   graphics.clear()
 
+  """
   scroll_t = min(1, time_on_row/SCROLL_DURATION)
 
   prev_y = int(lerp(2, GalacticUnicorn.HEIGHT, scroll_t))
@@ -124,7 +190,19 @@ while True:
     row_start_tickms = now
     prev_scroll = current_scroll
     current_scroll = 0
-    
+  """
+  
+  scroll_t = min(1, time_on_row/SCROLL_DURATION)
+
+  prev_y = int(lerp(1, GalacticUnicorn.HEIGHT, scroll_t))
+  current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
+  rows[current_row-1](forecast, prev_y)
+  rows[current_row](forecast, current_y)
+  
+  if time_on_row > (SCROLL_DURATION + PAUSE_DURATION):
+    current_row = (current_row + 1) % len(rows)
+    row_start_tickms = now
+  
   brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
     else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
     else 0
