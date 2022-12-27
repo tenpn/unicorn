@@ -69,7 +69,7 @@ except Exception as e:
   print(f'Wifi connection failed! {e}')
   exit()
   
-forecast_req = urequests.get(f"https://api.weatherapi.com/v1/forecast.json?q=tq4&key={proj_secrets.WEATHER_API_KEY}")
+forecast_req = urequests.get(f"https://api.weatherapi.com/v1/forecast.json?q={proj_secrets.WEATHER_POSTCODE}&key={proj_secrets.WEATHER_API_KEY}")
 
 if forecast_req.status_code != 200:
   exit()
