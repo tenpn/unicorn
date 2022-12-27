@@ -17,8 +17,8 @@ BLACK = graphics.create_pen(0, 0, 0)
 YELLOW = graphics.create_pen(255, 255, 50)
 RED = graphics.create_pen(255, 50, 50)
 
-SCROLL_DURATION = 1
-PAUSE_DURATION = 10
+SCROLL_DURATION = 0.4
+PAUSE_DURATION = 12
 SCROLL_PADDING = 4
 
 graphics.set_font("bitmap8")
@@ -78,7 +78,8 @@ rows = [
   forecast["current"]["condition"]["text"],
   f'Temp {forecast["current"]["temp_c"]}c (feels like {forecast["current"]["feelslike_c"]}c)',
   f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
-  "Next train: 3.35pm",
+  #"Next train: 3.35pm",
+  f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
 ]
 
 while True:
@@ -94,7 +95,7 @@ while True:
   current_y = int(lerp(-GalacticUnicorn.HEIGHT, 2, scroll_t))
   
   current_width = graphics.measure_text(rows[current_row], 1)
-  if time_on_row > SCROLL_DURATION and current_width > GalacticUnicorn.WIDTH:
+  if time_on_row > SCROLL_DURATION and current_width > GalacticUnicorn.WIDTH and time_on_row > (SCROLL_DURATION*2):
     current_scroll += 0.25
     while current_scroll >= (current_width + SCROLL_PADDING):
       current_scroll -= (current_width + SCROLL_PADDING)
