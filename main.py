@@ -4,24 +4,13 @@ from network_manager import NetworkManager
 import proj_secrets
 import time
 import uasyncio
+import urequests
 
 # create a PicoGraphics framebuffer to draw into
 graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
 
 # create our GalacticUnicorn object
 gu = GalacticUnicorn()
-
-# start position for scrolling (off the side of the display)
-scroll = float(-GalacticUnicorn.WIDTH)
-
-# message to scroll
-rows = [
-  "Min 3, max 13",
-  "Cloudy",
-  "Paignton",
-  "Next train: 3.35pm",
-  "Really long long long text here"
-]
 
 # pen colours to draw with
 BLACK = graphics.create_pen(0, 0, 0)
@@ -32,7 +21,7 @@ SCROLL_DURATION = 1
 PAUSE_DURATION = 10
 SCROLL_PADDING = 4
 
-graphics.set_font("bitmap6")
+graphics.set_font("bitmap8")
 
 current_row = 0
 row_start_tickms = time.ticks_ms()
@@ -55,6 +44,8 @@ def status_handler(mode, status, ip):
       graphics.line(0,0,0,i)
       gu.update(graphics)
       time.sleep(0.02)
+      
+    graphics.set_pen(BLACK)
     graphics.clear()
     gu.update(graphics)
         
@@ -73,6 +64,22 @@ try:
 except Exception as e:
   print(f'Wifi connection failed! {e}')
   exit()
+  
+forecast_req = urequests.get(f"https://api.weatherapi.com/v1/forecast.json?q=tq4&key={proj_secrets.WEATHER_API_KEY}")
+
+if forecast_req.status_code != 200:
+  exit()
+
+forecast = forecast_req.json()
+
+# message to scroll
+rows = [
+  forecast["location"]["name"],
+  forecast["current"]["condition"]["text"],
+  f'Temp {forecast["current"]["temp_c"]}c (feels like {forecast["current"]["feelslike_c"]}c)',
+  f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
+  "Next train: 3.35pm",
+]
 
 while True:
   now = time.ticks_ms()
@@ -88,19 +95,19 @@ while True:
   
   current_width = graphics.measure_text(rows[current_row], 1)
   if time_on_row > SCROLL_DURATION and current_width > GalacticUnicorn.WIDTH:
-    current_scroll += 0.4
+    current_scroll += 0.25
     while current_scroll >= (current_width + SCROLL_PADDING):
       current_scroll -= (current_width + SCROLL_PADDING)
 
   graphics.set_pen(YELLOW)
-  graphics.text(rows[current_row-1], round(2 - prev_scroll), prev_y, -1, 0.5);    
+  graphics.text(rows[current_row-1], round(1 - prev_scroll), prev_y, -1, 0.5);    
   if prev_scroll > 0:
     prev_width = graphics.measure_text(rows[current_row-1], 1)
-    graphics.text(rows[current_row-1], round(2 - prev_scroll) + prev_width + SCROLL_PADDING, prev_y, -1, 0.5);    
+    graphics.text(rows[current_row-1], round(1 - prev_scroll) + prev_width + SCROLL_PADDING, prev_y, -1, 0.5);    
     
-  graphics.text(rows[current_row], round(2 - current_scroll), current_y, -1, 0.5);
+  graphics.text(rows[current_row], round(1 - current_scroll), current_y, -1, 0.5);
   if current_scroll > 0:
-    graphics.text(rows[current_row], round(2 - current_scroll) + current_width + SCROLL_PADDING, current_y, -1, 0.5);
+    graphics.text(rows[current_row], round(1 - current_scroll) + current_width + SCROLL_PADDING, current_y, -1, 0.5);
 
   if time_on_row > (SCROLL_DURATION + PAUSE_DURATION):
     current_row = (current_row + 1) % len(rows)
