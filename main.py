@@ -1,6 +1,9 @@
 from galactic import GalacticUnicorn
 from picographics import PicoGraphics, DISPLAY_GALACTIC_UNICORN
+from network_manager import NetworkManager
+import proj_secrets
 import time
+import uasyncio
 
 # create a PicoGraphics framebuffer to draw into
 graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
@@ -22,7 +25,8 @@ rows = [
 
 # pen colours to draw with
 BLACK = graphics.create_pen(0, 0, 0)
-YELLOW = graphics.create_pen(255, 255, 0)
+YELLOW = graphics.create_pen(255, 255, 50)
+RED = graphics.create_pen(255, 50, 50)
 
 SCROLL_DURATION = 1
 PAUSE_DURATION = 10
@@ -37,6 +41,38 @@ current_scroll = 0
 
 def lerp(a: float, b: float, t: float):
   return a*(1-t) + b*t
+
+def status_handler(mode, status, ip):
+    # reports wifi connection status
+    print(mode, status, ip)
+    print('Connecting to wifi...')
+    
+    graphics.clear()
+    
+    graphics.set_pen(YELLOW)    
+    # flash while connecting
+    for i in range(GalacticUnicorn.HEIGHT):
+      graphics.line(0,0,0,i)
+      gu.update(graphics)
+      time.sleep(0.02)
+    graphics.clear()
+    gu.update(graphics)
+        
+    if status is not None:
+      if status:
+        print('Wifi connection successful!')
+      else:
+        print('Wifi connection failed!')
+        graphics.set_pen(RED)
+        graphics.line(0,0,0,GalacticUnicorn.HEIGHT)
+        gu.update(graphics)
+
+try:
+  network_manager = NetworkManager(proj_secrets.WIFI_COUNTRY, status_handler=status_handler)
+  uasyncio.get_event_loop().run_until_complete(network_manager.client(proj_secrets.WIFI_SSID, proj_secrets.WIFI_PSK))
+except Exception as e:
+  print(f'Wifi connection failed! {e}')
+  exit()
 
 while True:
   now = time.ticks_ms()
