@@ -23,11 +23,25 @@ RED = graphics.create_pen(255, 50, 50)
 ORANGE = graphics.create_pen(255, 127, 50)
 BLUE = graphics.create_pen(50, 50, 255)
 
+TEMPERATURE_COLOURS = [
+  [-5, graphics.create_pen(50,50,255)],
+  [0, graphics.create_pen(50,125,255)],
+  [5, graphics.create_pen(50,225,255)],
+  [15, graphics.create_pen(50,255,50)],
+  [25, graphics.create_pen(255,125,50)],
+  [99, graphics.create_pen(255,50,50)],
+]
+def get_col_for_temp(temp: float):
+  for temp_col in TEMPERATURE_COLOURS:
+    if temp <= temp_col[0]:
+      return temp_col[1]
+  return TEMPERATURE_COLOURS[-1][1]
+
 SCROLL_DURATION = 0.4
-PAUSE_DURATION = 12
+PAUSE_DURATION = 30
 SCROLL_PADDING = 4
 
-graphics.set_font("bitmap8")
+graphics.set_font("bitmap6")
 
 current_row = 0
 row_start_tickms = time.ticks_ms()
@@ -82,10 +96,6 @@ UP_ARROW = [
   "   #   ",
   "  ###  ",
   " ##### ",
-  "#######",
-  "   #   ",
-  "   #   ",
-  "   #   ",
   "   #   ",
   "   #   ",
 ]
@@ -126,31 +136,29 @@ def draw_icon(icon, origin_x, origin_y, pen, second_pen=None):
           graphics.set_pen(current_pen)
           last_pen = current_pen          
         graphics.pixel(origin_x + x, origin_y + y)
-
-def draw_minmax_temp(forecast, y: int):
-  temp_min = str(forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"])
-  temp_max = str(forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"])
-  
-  col = 1
-  draw_icon(DOWN_ARROW, col, y, BLUE)  
-  col += 8
-  
-  graphics.text(temp_min, col, y+1, scale=0.5)
-  min_width = graphics.measure_text(temp_min, scale=0.5)  
-  col += min_width
-  
-  draw_icon(UP_ARROW, col, y, ORANGE)
-  col += 8
-  graphics.text(temp_max, col, y+1, scale=0.5)
   
 def draw_temp(forecast, y: int):
-  temp = f'{forecast["current"]["temp_c"]} ({forecast["current"]["feelslike_c"]})'
+  temp = forecast["current"]["temp_c"]  
+  feels_like = forecast["current"]["feelslike_c"]
   
   col = 0
-  draw_icon(TEMP, col, y, BLUE, second_pen=RED)
+  draw_icon(TEMP, col, y, BLUE, second_pen=get_col_for_temp(temp))
   col += 8
   
-  graphics.text(temp, col, y+1, scale=0.5)
+  graphics.set_pen(get_col_for_temp(temp))
+  graphics.text(str(temp), col, y-2, scale=0.5)
+  graphics.set_pen(get_col_for_temp(feels_like))
+  feels_like_str = f"({feels_like})"
+  graphics.text(feels_like_str, col, y+4, scale=0.5)
+  col += max(graphics.measure_text(str(temp), scale=0.5), graphics.measure_text(feels_like_str, scale=0.5))  
+  
+  temp_max = forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"]
+  draw_icon(UP_ARROW, col, y-1, get_col_for_temp(temp_max))  
+  graphics.text(str(temp_max), col+8, y-2, scale=0.5)
+  
+  temp_min = forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"]
+  draw_icon(DOWN_ARROW, col, y+5, get_col_for_temp(temp_min))  
+  graphics.text(str(temp_min), col+8, y+4, scale=0.5)
   
 def draw_wind_humidity(forecast, y: int):
   wind = str(forecast["current"]["wind_mph"]) + "mph"
@@ -168,7 +176,6 @@ rows = [
   #"Next train: 3.35pm",
   #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
   draw_temp,
-  draw_minmax_temp,
   draw_wind_humidity,
 ]
 
@@ -181,41 +188,10 @@ while True:
 
   graphics.set_pen(BLACK)
   graphics.clear()
-
-  """
-  scroll_t = min(1, time_on_row/SCROLL_DURATION)
-
-  prev_y = int(lerp(2, GalacticUnicorn.HEIGHT, scroll_t))
-  current_y = int(lerp(-GalacticUnicorn.HEIGHT, 2, scroll_t))
-  
-  current_width = graphics.measure_text(rows[current_row], 1)
-  if time_on_row > SCROLL_DURATION and current_width > GalacticUnicorn.WIDTH and time_on_row > (SCROLL_DURATION*2):
-    current_scroll += 0.25
-    while current_scroll >= (current_width + SCROLL_PADDING):
-      current_scroll -= (current_width + SCROLL_PADDING)
-
-  # if we scroll long text, we'll draw it again like it's wrapping around
-  
-  graphics.set_pen(YELLOW)
-  graphics.text(rows[current_row-1], round(1 - prev_scroll), prev_y, -1, 0.5);    
-  if prev_scroll > 0:
-    prev_width = graphics.measure_text(rows[current_row-1], 1)
-    graphics.text(rows[current_row-1], round(1 - prev_scroll) + prev_width + SCROLL_PADDING, prev_y, -1, 0.5);    
-    
-  graphics.text(rows[current_row], round(1 - current_scroll), current_y, -1, 0.5);
-  if current_scroll > 0:
-    graphics.text(rows[current_row], round(1 - current_scroll) + current_width + SCROLL_PADDING, current_y, -1, 0.5);
-
-  if time_on_row > (SCROLL_DURATION + PAUSE_DURATION):
-    current_row = (current_row + 1) % len(rows)
-    row_start_tickms = now
-    prev_scroll = current_scroll
-    current_scroll = 0
-  """
   
   scroll_t = min(1, time_on_row/SCROLL_DURATION)
 
-  prev_y = int(lerp(1, GalacticUnicorn.HEIGHT, scroll_t))
+  prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
   current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
   rows[current_row-1](forecast, prev_y)
   rows[current_row](forecast, current_y)
