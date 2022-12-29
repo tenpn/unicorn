@@ -3,6 +3,7 @@ from picographics import PicoGraphics, DISPLAY_GALACTIC_UNICORN
 from network_manager import NetworkManager
 import proj_secrets
 import time
+import math
 import machine
 import uasyncio
 import urequests
@@ -17,6 +18,7 @@ graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
 gu = GalacticUnicorn()
 
 # pen colours to draw with
+GREY = graphics.create_pen(50,50,50)
 BLACK = graphics.create_pen(0, 0, 0)
 YELLOW = graphics.create_pen(255, 255, 50)
 RED = graphics.create_pen(255, 50, 50)
@@ -142,8 +144,8 @@ def draw_temp(forecast, y: int):
   feels_like = forecast["current"]["feelslike_c"]
   
   col = 0
-  draw_icon(TEMP, col, y, BLUE, second_pen=get_col_for_temp(temp))
-  col += 8
+  draw_icon(TEMP, col, y, GREY, second_pen=get_col_for_temp(temp))
+  col += 7
   
   graphics.set_pen(get_col_for_temp(temp))
   graphics.text(str(temp), col, y-2, scale=0.5)
@@ -151,14 +153,16 @@ def draw_temp(forecast, y: int):
   feels_like_str = f"({feels_like})"
   graphics.text(feels_like_str, col, y+4, scale=0.5)
   col += max(graphics.measure_text(str(temp), scale=0.5), graphics.measure_text(feels_like_str, scale=0.5))  
+  if col < GalacticUnicorn.WIDTH*0.5:
+    col = math.floor(GalacticUnicorn.WIDTH*0.5)
   
   temp_max = forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"]
   draw_icon(UP_ARROW, col, y-1, get_col_for_temp(temp_max))  
-  graphics.text(str(temp_max), col+8, y-2, scale=0.5)
+  graphics.text(str(temp_max), col+7, y-2, scale=0.5)
   
   temp_min = forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"]
   draw_icon(DOWN_ARROW, col, y+5, get_col_for_temp(temp_min))  
-  graphics.text(str(temp_min), col+8, y+4, scale=0.5)
+  graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
 def draw_wind_humidity(forecast, y: int):
   wind = str(forecast["current"]["wind_mph"]) + "mph"
