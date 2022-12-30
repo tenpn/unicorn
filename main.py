@@ -185,6 +185,7 @@ rows = [
 
 gu.set_brightness(0.5)
 brightness_btn_prev : int = 0
+speed_btn_prev : int = 0
 
 while True:
   now = time.ticks_ms()
@@ -212,7 +213,15 @@ while True:
     gu.adjust_brightness(0.1 * brightness_btn)
     
   brightness_btn_prev = brightness_btn
-
+    
+  speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
+    else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_DOWN) \
+    else 0
+  if speed_btn != speed_btn_prev and speed_btn != 0:
+    PAUSE_DURATION = max(0, PAUSE_DURATION + speed_btn)
+    print(f"new pause duration {PAUSE_DURATION}")
+  speed_btn_prev = speed_btn
+    
   # update the display
   gu.update(graphics)
 
