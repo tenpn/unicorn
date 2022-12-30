@@ -26,17 +26,18 @@ ORANGE = graphics.create_pen(255, 127, 50)
 BLUE = graphics.create_pen(50, 50, 255)
 
 TEMPERATURE_COLOURS = [
-  [-5, graphics.create_pen(50,50,255)],
-  [0, graphics.create_pen(50,125,255)],
-  [5, graphics.create_pen(50,225,255)],
-  [15, graphics.create_pen(50,255,50)],
+  # below temp, pen
+  [-3, graphics.create_pen(50,50,255)], 
+  [3, graphics.create_pen(50,125,255)], 
+  [10, graphics.create_pen(50,225,150)],
+  [15, graphics.create_pen(50,255,50)], 
   [25, graphics.create_pen(255,125,50)],
-  [99, graphics.create_pen(255,50,50)],
+  [99, graphics.create_pen(255,50,50)], 
 ]
 def get_col_for_temp(temp: float):
-  for temp_col in TEMPERATURE_COLOURS:
-    if temp <= temp_col[0]:
-      return temp_col[1]
+  for (max_temp, col) in TEMPERATURE_COLOURS:
+    if temp <= max_temp:
+      return col
   return TEMPERATURE_COLOURS[-1][1]
 
 SCROLL_DURATION = 0.4
@@ -105,7 +106,7 @@ DOWN_ARROW = list(reversed(UP_ARROW))
 TEMP = [
   "  ###  ",
   "  # #  ",
-  "  # #  ",
+  "  #.#  ",
   "  #.#  ",
   "  #.#  ",
   "  #.#  ",
@@ -131,20 +132,27 @@ def draw_icon(icon, origin_x, origin_y, pen, second_pen=None):
   for y in range(len(icon)):
     for x in range(len(icon[y])):
       current_pen = pen if icon[y][x] == '#' \
-        else second_pen if icon[y][x] == '.' \
+        else second_pen(x,y) if icon[y][x] == '.' \
         else None
       if current_pen is not None:
         if current_pen != last_pen:
           graphics.set_pen(current_pen)
           last_pen = current_pen          
         graphics.pixel(origin_x + x, origin_y + y)
+        
+def get_thermometer_col_from_y(icon_y, temp):
+  temp_index = min(len(TEMPERATURE_COLOURS), 7-icon_y)
+  (max_temp, temp_pen) = TEMPERATURE_COLOURS[temp_index]
+  min_temp = -99 if temp_index == 0 else TEMPERATURE_COLOURS[temp_index-1][0]
+  return temp_pen if temp >= max_temp or (temp > min_temp and temp <= max_temp) else BLACK
   
 def draw_temp(forecast, y: int):
   temp = forecast["current"]["temp_c"]  
   feels_like = forecast["current"]["feelslike_c"]
   
   col = 0
-  draw_icon(TEMP, col, y, GREY, second_pen=get_col_for_temp(temp))
+  draw_icon(TEMP, col, y, GREY, 
+            second_pen=lambda _, sec_y: get_thermometer_col_from_y(sec_y, temp))
   col += 7
   
   graphics.set_pen(get_col_for_temp(temp))
@@ -157,11 +165,13 @@ def draw_temp(forecast, y: int):
     col = math.floor(GalacticUnicorn.WIDTH*0.5)
   
   temp_max = forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"]
-  draw_icon(UP_ARROW, col, y-1, get_col_for_temp(temp_max))  
+  draw_icon(UP_ARROW, col, y-1, GREY)
+  graphics.set_pen(get_col_for_temp(temp_max))
   graphics.text(str(temp_max), col+7, y-2, scale=0.5)
   
   temp_min = forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"]
-  draw_icon(DOWN_ARROW, col, y+5, get_col_for_temp(temp_min))  
+  draw_icon(DOWN_ARROW, col, y+5, GREY)
+  graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
 def draw_wind_humidity(forecast, y: int):
@@ -180,7 +190,7 @@ rows = [
   #"Next train: 3.35pm",
   #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
   draw_temp,
-  draw_wind_humidity,
+  #draw_wind_humidity,
 ]
 
 gu.set_brightness(0.5)
@@ -208,10 +218,8 @@ while True:
   brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
     else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
     else 0
-    
   if brightness_btn != brightness_btn_prev and brightness_btn != 0:
     gu.adjust_brightness(0.1 * brightness_btn)
-    
   brightness_btn_prev = brightness_btn
     
   speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
@@ -219,8 +227,13 @@ while True:
     else 0
   if speed_btn != speed_btn_prev and speed_btn != 0:
     PAUSE_DURATION = max(0, PAUSE_DURATION + speed_btn)
-    print(f"new pause duration {PAUSE_DURATION}")
   speed_btn_prev = speed_btn
+
+  """
+  for temp_col_i in range(len(TEMPERATURE_COLOURS)):
+    graphics.set_pen(TEMPERATURE_COLOURS[temp_col_i][1])
+    graphics.pixel(GalacticUnicorn.WIDTH-1, temp_col_i)
+  """
     
   # update the display
   gu.update(graphics)
