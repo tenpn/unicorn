@@ -19,10 +19,13 @@ gu = GalacticUnicorn()
 
 # pen colours to draw with
 GREY = graphics.create_pen(50,50,50)
+LIGHT_GREY = graphics.create_pen(150,150,150)
 BLACK = graphics.create_pen(0, 0, 0)
 YELLOW = graphics.create_pen(255, 255, 50)
 RED = graphics.create_pen(255, 50, 50)
+GREEN = graphics.create_pen(50, 255, 50)
 ORANGE = graphics.create_pen(255, 127, 50)
+LIGHT_BLUE = graphics.create_pen(100, 100, 255)
 BLUE = graphics.create_pen(50, 50, 255)
 
 TEMPERATURE_COLOURS = [
@@ -41,7 +44,7 @@ def get_col_for_temp(temp: float):
   return TEMPERATURE_COLOURS[-1][1]
 
 SCROLL_DURATION = 0.4
-PAUSE_DURATION = 30
+PAUSE_DURATION = 15
 SCROLL_PADDING = 4
 
 graphics.set_font("bitmap6")
@@ -115,15 +118,25 @@ TEMP = [
   "  ###  ",
 ]
 WIND = [
-  "  #    ",
-  "   #   ",
-  "###  # ",
-  "      #",
-  "###### ",
-  "       ",
-  "####   ",
-  "    #  ",
-  "   #   ",
+  "#  ## ",
+  " ##  #",
+  "      ",
+  "#  ## ",
+  " ##  #",
+]
+HUMIDITY = [
+  "# #. .",
+  "# #  .",
+  "### . ",
+  "# #.  ",
+  "# #. .",
+]
+RAIN = [
+  "#   #",
+  "# #  ",
+  "  # #",
+  "#   #",
+  "# #  ",
 ]
 
 def draw_icon(icon, origin_x, origin_y, pen, second_pen=None):
@@ -174,14 +187,41 @@ def draw_temp(forecast, y: int):
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
-def draw_wind_humidity(forecast, y: int):
-  wind = str(forecast["current"]["wind_mph"]) + "mph"
-  humidity = str(forecast["current"]["humidity"]) + "%"
+def draw_atmosphere(forecast, y: int):
+  wind = forecast["current"]["wind_mph"]
+  humidity = forecast["current"]["humidity"]
+  rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
   
   col = 1
-  draw_icon(WIND, col, y, BLUE)
-  col += 9
-  graphics.text(wind, col, y+1, scale=0.5)
+  draw_icon(WIND, col, y-1, GREY)
+  draw_icon(RAIN, col, y+5, LIGHT_BLUE)
+
+  col += 7
+  
+  wind_colour = RED if wind > 20 \
+    else YELLOW if wind > 10 \
+    else GREEN if wind < 3 \
+    else GREY
+  graphics.set_pen(wind_colour)
+  graphics.text(str(wind), col, y-2, scale=0.5)
+  
+  rain_colour = BLUE if rain_chance > 70 \
+    else LIGHT_BLUE if rain_chance > 30 \
+    else GREY
+  graphics.set_pen(rain_colour)
+  graphics.text(str(rain_chance), col, y+4, scale=0.5)
+  
+  col += max(graphics.measure_text(str(wind), scale=0.5), graphics.measure_text(str(rain_chance), scale=0.5))  
+  if col < GalacticUnicorn.WIDTH*0.5:
+    col = math.floor(GalacticUnicorn.WIDTH*0.5)
+    
+  draw_icon(HUMIDITY, col, y-1, LIGHT_BLUE, second_pen=lambda _x,_y: GREY)
+  
+  col += 7
+  
+  graphics.set_pen(LIGHT_GREY)
+  graphics.text(str(humidity), col, y-2, scale=0.5)
+  
 
 # message to scroll
 rows = [
@@ -189,8 +229,8 @@ rows = [
   #f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
   #"Next train: 3.35pm",
   #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
+  draw_atmosphere,
   draw_temp,
-  #draw_wind_humidity,
 ]
 
 gu.set_brightness(0.5)
