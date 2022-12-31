@@ -18,6 +18,7 @@ graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
 gu = GalacticUnicorn()
 
 # pen colours to draw with
+DARK_GREY = graphics.create_pen(15,15,15)
 GREY = graphics.create_pen(50,50,50)
 LIGHT_GREY = graphics.create_pen(150,150,150)
 BLACK = graphics.create_pen(0, 0, 0)
@@ -182,7 +183,7 @@ def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) 
     if math.floor(time/scroll_duration)%2 == 1: 
       scroll_t = 1 - scroll_t      
     # with a touch of padding
-    scroll_offset = math.ceil(lerp(2, -max_scroll-2, scroll_t))
+    scroll_offset = math.ceil(lerp(1, -max_scroll-1, scroll_t))
   else:
     scroll_offset = 0
   
@@ -340,9 +341,18 @@ while True:
   rows[current_row-1](forecast, prev_y, time_on_row)
   rows[current_row](forecast, current_y, time_on_row)
   
+  # progres bar for next row 
+  graphics.set_pen(DARK_GREY)
+  row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
+  progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
+  for progress_y in range(0, progress_pixels):
+    graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
+  
   if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):
     current_row = (current_row + 1) % len(rows)
     row_start_tickms = now
+    
+  # inputs
   
   brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
     else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
