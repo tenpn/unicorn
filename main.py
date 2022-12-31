@@ -22,6 +22,8 @@ graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
 # create our GalacticUnicorn object
 gu = GalacticUnicorn()
 
+gu.set_brightness(0.5)
+
 # pen colours to draw with
 DARK_GREY = graphics.create_pen(15,15,15)
 GREY = graphics.create_pen(50,50,50)
@@ -51,11 +53,6 @@ def get_col_for_temp(temp: float):
   return TEMPERATURE_COLOURS[-1][1]
 
 graphics.set_font("bitmap6")
-
-current_row = 0
-row_start_tickms = time.ticks_ms()
-prev_scroll = 0
-current_scroll = 0
 
 def lerp(a: float, b: float, t: float) -> float:
   return a*(1-t) + b*t
@@ -95,21 +92,7 @@ def status_handler(mode, status, ip):
         graphics.set_pen(RED)
         graphics.line(0,0,0,GalacticUnicorn.HEIGHT)
         gu.update(graphics)
-
-try:
-  network_manager = NetworkManager(proj_secrets.WIFI_COUNTRY, status_handler=status_handler)
-  uasyncio.get_event_loop().run_until_complete(network_manager.client(proj_secrets.WIFI_SSID, proj_secrets.WIFI_PSK))
-except Exception as e:
-  print(f'Wifi connection failed! {e}')
-  exit()
-  
-forecast_req = urequests.get(f"https://api.weatherapi.com/v1/forecast.json?q={proj_secrets.WEATHER_POSTCODE}&key={proj_secrets.WEATHER_API_KEY}")
-
-if forecast_req.status_code != 200:
-  exit()
-
-forecast = forecast_req.json()
-
+        
 def get_thermometer_col_from_y(icon_y, temp):
   temp_index = min(len(TEMPERATURE_COLOURS), 7-icon_y)
   (max_temp, temp_pen) = TEMPERATURE_COLOURS[temp_index]
@@ -269,52 +252,73 @@ rows = [
   draw_temp,
 ]
 
-gu.set_brightness(0.5)
-brightness_btn_prev : int = 0
-speed_btn_prev : int = 0
+if __name__=="__main__":
 
-while True:
-  now = time.ticks_ms()
-  time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
-
-  graphics.set_pen(BLACK)
-  graphics.clear()
-  
-  scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
-
-  prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
-  current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-  rows[current_row-1](forecast, prev_y, time_on_row)
-  rows[current_row](forecast, current_y, time_on_row)
-  
-  # progres bar for next row 
-  graphics.set_pen(DARK_GREY)
-  row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
-  progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
-  for progress_y in range(0, progress_pixels):
-    graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
-  
-  if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):
-    current_row = (current_row + 1) % len(rows)
-    row_start_tickms = now
+  try:
+    network_manager = NetworkManager(proj_secrets.WIFI_COUNTRY, status_handler=status_handler)
+    uasyncio.get_event_loop().run_until_complete(network_manager.client(proj_secrets.WIFI_SSID, proj_secrets.WIFI_PSK))
+  except Exception as e:
+    print(f'Wifi connection failed! {e}')
+    exit()
     
-  # inputs
-  
-  brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
-    else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
-    else 0
-  if brightness_btn != brightness_btn_prev and brightness_btn != 0:
-    gu.adjust_brightness(0.1 * brightness_btn)
-  brightness_btn_prev = brightness_btn
+  current_row = 0
+  row_start_tickms = time.ticks_ms()
+  prev_scroll = 0
+  current_scroll = 0
     
-  speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
-    else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_DOWN) \
-    else 0
-  if speed_btn != speed_btn_prev and speed_btn != 0:
-    ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
-  speed_btn_prev = speed_btn
-    
-  # update the display
-  gu.update(graphics)
+  forecast_req = urequests.get(f"https://api.weatherapi.com/v1/forecast.json?q={proj_secrets.WEATHER_POSTCODE}&key={proj_secrets.WEATHER_API_KEY}")
 
-  time.sleep(0.02)
+  if forecast_req.status_code != 200:
+    print("fetching forecast failed " + forecast_req.status_code)
+    exit()
+
+  forecast = forecast_req.json()
+
+  brightness_btn_prev : int = 0
+  speed_btn_prev : int = 0
+
+  while True:
+    now = time.ticks_ms()
+    time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
+
+    graphics.set_pen(BLACK)
+    graphics.clear()
+    
+    scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
+
+    prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
+    current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
+    rows[current_row-1](forecast, prev_y, time_on_row)
+    rows[current_row](forecast, current_y, time_on_row)
+    
+    # progres bar for next row 
+    graphics.set_pen(DARK_GREY)
+    row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
+    progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
+    for progress_y in range(0, progress_pixels):
+      graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
+    
+    if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):
+      current_row = (current_row + 1) % len(rows)
+      row_start_tickms = now
+      
+    # inputs
+    
+    brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
+      else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
+      else 0
+    if brightness_btn != brightness_btn_prev and brightness_btn != 0:
+      gu.adjust_brightness(0.1 * brightness_btn)
+    brightness_btn_prev = brightness_btn
+      
+    speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
+      else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_DOWN) \
+      else 0
+    if speed_btn != speed_btn_prev and speed_btn != 0:
+      ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
+    speed_btn_prev = speed_btn
+      
+    # update the display
+    gu.update(graphics)
+
+    time.sleep(0.02)
