@@ -9,6 +9,7 @@ import uasyncio
 import urequests
 import icons
 import ntp_time
+import trains_azure
 
 ROW_SCROLL_DURATION = 0.5
 ROW_PAUSE_DURATION = 15
@@ -121,7 +122,7 @@ def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) 
   graphics.text(text, left + scroll_offset, top, scale=0.5)
   graphics.remove_clip()
 
-def draw_temp(forecast, y: int, time_on_row: float) -> None:
+def draw_temp(forecast, departures, y: int, time_on_row: floatb) -> None:
   temp = forecast["current"]["temp_c"]  
   feels_like = forecast["current"]["feelslike_c"]
   
@@ -149,7 +150,7 @@ def draw_temp(forecast, y: int, time_on_row: float) -> None:
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
-def draw_atmosphere(forecast, y: int, time_on_row: float) -> None:
+def draw_atmosphere(forecast, departures, y: int, time_on_row: float) -> None:
   wind = forecast["current"]["wind_mph"]
   humidity = forecast["current"]["humidity"]
   rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
@@ -207,10 +208,10 @@ MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
 
-def draw_clock(forecast, y: int, time_on_row: float) -> None:
+def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
   graphics.set_font("bitmap8")
       
-  (_,month,monthday,h,m,_,_,_) = time.localtime(time.time()) # forecast["locaation"]["localtime"][11:]
+  (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
   graphics.set_pen(LIGHT_GREY)
   graphics.text(f"{h:02d}:{m:02d}", 2, y, scale=0.5)
   graphics.set_font("bitmap6")
@@ -245,13 +246,42 @@ def draw_clock(forecast, y: int, time_on_row: float) -> None:
     # set second tick after the new hour
     if h >= h_tick:
       graphics.pixel(h_tick*2+1,y+9)
+      
+def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
+  if departures is None or len(departures) == 0:
+    graphics.set_font("bitmap8")
+    graphics.set_pen(ORANGE)    
+    graphics.text("No trains", 1, y, scale=0.5)  
+    graphics.set_font("bitmap6")
+    return
+  
+  graphics.set_pen(GREY)
+  graphics.text("Trains:", 1, y-2, scale=0.5)
+  
+  # how long until departures
+  (_,_,_,h,m,_,_,_) = time.localtime(time.time())
+  now_decimal = h + (m/60)
+  until_departures = [math.floor(60*(departure_time - now_decimal))
+                      for departure_time in departures]
+  until_departures = [until_departure
+                      for until_departure in until_departures
+                      if until_departure >= 0]
+  col = 1
+  for departure in until_departures:
+    departure_col = RED if departure <= 10 \
+      else ORANGE if departure <= 15 \
+      else GREEN if departure <= 20 \
+      else GREY
+    graphics.set_pen(departure_col)    
+    graphics.text(str(departure), col, y+3, scale=0.5)  
+    col += graphics.measure_text(str(departure), scale=0.5) + 1
 
 # message to scroll
 rows = [
-  #"Next train: 3.35pm",
   draw_clock,
   draw_atmosphere,
   draw_temp,
+  draw_trains,
 ]
 
 if __name__=="__main__":
@@ -282,6 +312,12 @@ if __name__=="__main__":
 
     forecast = forecast_req.json()
     forecast_req.close()
+    
+    timetables = trains_azure.get_timetables()
+    next_departures = [] if timetables is None \
+      else [timetable_entry[0]["time"]
+            for timetable_entry in timetables.rl_timetable]
+    print(next_departures)
 
     brightness_btn_prev : int = 0
     speed_btn_prev : int = 0
@@ -301,8 +337,8 @@ if __name__=="__main__":
 
       prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
       current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-      rows[current_row-1](forecast, prev_y, time_on_row)
-      rows[current_row](forecast, current_y, time_on_row)
+      rows[current_row-1](forecast, next_departures, prev_y, time_on_row)
+      rows[current_row](forecast, next_departures, current_y, time_on_row)
       
       # progres bar for next row 
       graphics.set_pen(DARK_GREY)
