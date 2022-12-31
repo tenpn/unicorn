@@ -248,7 +248,7 @@ def draw_atmosphere(forecast, y: int, time_on_row: float) -> None:
     col = math.floor(GalacticUnicorn.WIDTH*0.5)
     
   graphics.set_pen(LIGHT_GREY)  
-  scroll_text(condition, col, y+4, GalacticUnicorn.WIDTH-col, math.ceil(GalacticUnicorn.HEIGHT*0.5), time_on_row)
+  scroll_text(condition, col, y+4, GalacticUnicorn.WIDTH-col-1, math.ceil(GalacticUnicorn.HEIGHT*0.5), time_on_row)
   
   draw_icon(HUMIDITY, col, y-1, LIGHT_BLUE, second_pen=lambda _x,_y: GREY)
   
@@ -270,17 +270,30 @@ def decimal_time_from_time_str(time_str: str) -> float:
   m = float(time_str[3:5])
   h24 = h12 if time_str[6] == "A" else (h12+12)
   return h24 + (m/60.0)
+  
+MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+]
 
 def draw_clock(forecast, y: int, time_on_row: float) -> None:
   graphics.set_font("bitmap8")
       
-  (year,month,_,h,m,_,_,_) = time.localtime(time.time()) # forecast["locaation"]["localtime"][11:]
+  (_,month,monthday,h,m,_,_,_) = time.localtime(time.time()) # forecast["locaation"]["localtime"][11:]
   graphics.set_pen(LIGHT_GREY)
-  graphics.text(f"{h:02d}:{m:02d}", 1, y, scale=0.5)
+  graphics.text(f"{h:02d}:{m:02d}", 2, y, scale=0.5)
   graphics.set_font("bitmap6")
   
   sunrise = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunrise"])
   sunset = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunset"])
+  
+  monthday_str = str(monthday)
+  monthday_str_width = graphics.measure_text(monthday_str, scale=0.5)
+  graphics.text(monthday_str, 52-monthday_str_width, y, scale=0.5)
+  
+  graphics.set_pen(GREY)
+  month_str = MONTHS[month-1]
+  month_str_width = graphics.measure_text(month_str, scale=0.5)
+  graphics.text(month_str, 52-monthday_str_width-month_str_width-1, y, scale=0.5)
   
   # 53 pixels, 2 pixels per hour
   for h_tick in range(1,25):
