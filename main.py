@@ -26,6 +26,7 @@ RED = graphics.create_pen(255, 50, 50)
 GREEN = graphics.create_pen(50, 255, 50)
 ORANGE = graphics.create_pen(255, 127, 50)
 LIGHT_BLUE = graphics.create_pen(100, 100, 255)
+DARK_BLUE = graphics.create_pen(50, 50, 200)
 BLUE = graphics.create_pen(50, 50, 255)
 
 TEMPERATURE_COLOURS = [
@@ -166,9 +167,29 @@ def get_thermometer_col_from_y(icon_y, temp):
   temp_index = min(len(TEMPERATURE_COLOURS), 7-icon_y)
   (max_temp, temp_pen) = TEMPERATURE_COLOURS[temp_index]
   min_temp = -99 if temp_index == 0 else TEMPERATURE_COLOURS[temp_index-1][0]
-  return temp_pen if temp >= max_temp or (temp > min_temp and temp <= max_temp) else BLACK
+  return temp_pen if temp >= max_temp or (temp > min_temp and temp <= max_temp) else BLACK  
   
-def draw_temp(forecast, y: int, time_on_row: float):
+def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) -> None:
+  """will clip text to box. eases in/out, uses INFO_SCROLL_SPEED
+  """
+  graphics.set_clip(left, top, width, height)
+  max_scroll = (graphics.measure_text(text, scale=0.5)) - width
+  if max_scroll > 0:
+    time -= ROW_SCROLL_DURATION # don't start early 
+    scroll_duration = max_scroll / INFO_SCROLL_SPEED
+    scroll_t = ease_in_out((time % scroll_duration) / scroll_duration)
+    # back and forth
+    if math.floor(time/scroll_duration)%2 == 1: 
+      scroll_t = 1 - scroll_t      
+    # with a touch of padding
+    scroll_offset = math.ceil(lerp(2, -max_scroll-2, scroll_t))
+  else:
+    scroll_offset = 0
+  
+  graphics.text(text, left + scroll_offset, top, scale=0.5)
+  graphics.remove_clip()
+
+def draw_temp(forecast, y: int, time_on_row: float) -> None:
   temp = forecast["current"]["temp_c"]  
   feels_like = forecast["current"]["feelslike_c"]
   
@@ -196,7 +217,7 @@ def draw_temp(forecast, y: int, time_on_row: float):
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
-def draw_atmosphere(forecast, y: int, time_on_row: float):
+def draw_atmosphere(forecast, y: int, time_on_row: float) -> None:
   wind = forecast["current"]["wind_mph"]
   humidity = forecast["current"]["humidity"]
   rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
@@ -236,26 +257,48 @@ def draw_atmosphere(forecast, y: int, time_on_row: float):
   graphics.set_pen(LIGHT_GREY)
   graphics.text(str(humidity), col, y-2, scale=0.5)
   
-def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float):
-  """will clip text to box. eases in/out, uses INFO_SCROLL_SPEED
+def decimal_time_from_time_str(time_str: str) -> float:
+  """easier to do maths with decimal time!
+
+  Args:
+      time_str (str): "HH:MM AM"/"HH:MM PM"
+
+  Returns:
+      float: 24hour.fraction-through-hour
   """
-  graphics.set_clip(left, top, width, height)
-  max_scroll = (graphics.measure_text(text, scale=0.5)) - width
-  if max_scroll > 0:
-    time -= ROW_SCROLL_DURATION # don't start early 
-    scroll_duration = max_scroll / INFO_SCROLL_SPEED
-    scroll_t = ease_in_out((time % scroll_duration) / scroll_duration)
-    # back and forth
-    if math.floor(time/scroll_duration)%2 == 1: 
-      scroll_t = 1 - scroll_t      
-    # with a touch of padding
-    scroll_offset = math.ceil(lerp(2, -max_scroll-2, scroll_t))
-  else:
-    scroll_offset = 0
+  h12 = int(time_str[0:2]) 
+  m = float(time_str[3:5])
+  h24 = h12 if time_str[6] == "A" else (h12+12)
+  return h24 + (m/60.0)
+
+def draw_clock(forecast, y: int, time_on_row: float) -> None:
+  graphics.set_font("bitmap8")
+      
+  (year,month,_,h,m,_,_,_) = time.localtime(time.time()) # forecast["locaation"]["localtime"][11:]
+  graphics.set_pen(LIGHT_GREY)
+  graphics.text(f"{h:02d}:{m:02d}", 1, y, scale=0.5)
+  graphics.set_font("bitmap6")
   
-  graphics.text(text, left + scroll_offset, top, scale=0.5)
-  graphics.remove_clip()
+  sunrise = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunrise"])
+  sunset = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunset"])
   
+  # 53 pixels, 2 pixels per hour
+  for h_tick in range(1,25):
+    # h_tick represents the hour we're building towards. eg first loop is midnight to 1am
+    tick_colour = LIGHT_GREY if h_tick == 12 \
+      else DARK_BLUE if (sunrise >= h_tick or sunset <= h_tick) \
+      else YELLOW
+    graphics.set_pen(tick_colour)
+    graphics.pixel(h_tick*2+1, y+8)
+    
+    # set first tick after half past of prev hour
+    graphics.set_pen(GREY)
+    if h >= h_tick or (h == h_tick-1 and m >= 30):
+      graphics.pixel(h_tick*2,y+9)
+      
+    # set second tick after the new hour
+    if h >= h_tick:
+      graphics.pixel(h_tick*2+1,y+9)
 
 # message to scroll
 rows = [
@@ -263,6 +306,7 @@ rows = [
   #f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
   #"Next train: 3.35pm",
   #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
+  draw_clock,
   draw_atmosphere,
   draw_temp,
 ]
