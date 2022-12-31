@@ -7,6 +7,11 @@ import math
 import machine
 import uasyncio
 import urequests
+import icons
+
+ROW_SCROLL_DURATION = 0.5
+ROW_PAUSE_DURATION = 15
+INFO_SCROLL_SPEED = 5
 
 # "overclock" from the sample code???
 machine.freq(200000000)
@@ -44,10 +49,6 @@ def get_col_for_temp(temp: float):
     if temp <= max_temp:
       return col
   return TEMPERATURE_COLOURS[-1][1]
-
-ROW_SCROLL_DURATION = 0.5
-ROW_PAUSE_DURATION = 15
-INFO_SCROLL_SPEED = 5
 
 graphics.set_font("bitmap6")
 
@@ -109,61 +110,6 @@ if forecast_req.status_code != 200:
 
 forecast = forecast_req.json()
 
-UP_ARROW = [
-  "   #   ",
-  "  ###  ",
-  " ##### ",
-  "   #   ",
-  "   #   ",
-]
-DOWN_ARROW = list(reversed(UP_ARROW))
-TEMP = [
-  "  ###  ",
-  "  # #  ",
-  "  #.#  ",
-  "  #.#  ",
-  "  #.#  ",
-  "  #.#  ",
-  " #...# ",
-  " #...# ",
-  "  ###  ",
-]
-WIND = [
-  "#  ## ",
-  " ##  #",
-  "      ",
-  "#  ## ",
-  " ##  #",
-]
-HUMIDITY = [
-  "# #. .",
-  "# #  .",
-  "### . ",
-  "# #.  ",
-  "# #. .",
-]
-RAIN = [
-  "#   #",
-  "# #  ",
-  "  # #",
-  "#   #",
-  "# #  ",
-]
-
-def draw_icon(icon, origin_x, origin_y, pen, second_pen=None):
-  last_pen = pen
-  graphics.set_pen(pen)
-  for y in range(len(icon)):
-    for x in range(len(icon[y])):
-      current_pen = pen if icon[y][x] == '#' \
-        else second_pen(x,y) if icon[y][x] == '.' \
-        else None
-      if current_pen is not None:
-        if current_pen != last_pen:
-          graphics.set_pen(current_pen)
-          last_pen = current_pen          
-        graphics.pixel(origin_x + x, origin_y + y)
-        
 def get_thermometer_col_from_y(icon_y, temp):
   temp_index = min(len(TEMPERATURE_COLOURS), 7-icon_y)
   (max_temp, temp_pen) = TEMPERATURE_COLOURS[temp_index]
@@ -195,8 +141,8 @@ def draw_temp(forecast, y: int, time_on_row: float) -> None:
   feels_like = forecast["current"]["feelslike_c"]
   
   col = 0
-  draw_icon(TEMP, col, y, GREY, 
-            second_pen=lambda _, sec_y: get_thermometer_col_from_y(sec_y, temp))
+  icons.draw(graphics, icons.TEMP, col, y, GREY, 
+             second_pen=lambda _, sec_y: get_thermometer_col_from_y(sec_y, temp))
   col += 7
   
   graphics.set_pen(get_col_for_temp(temp))
@@ -209,12 +155,12 @@ def draw_temp(forecast, y: int, time_on_row: float) -> None:
     col = math.floor(GalacticUnicorn.WIDTH*0.5)
   
   temp_max = forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"]
-  draw_icon(UP_ARROW, col, y-1, GREY)
+  icons.draw(graphics, icons.UP_ARROW, col, y-1, GREY)
   graphics.set_pen(get_col_for_temp(temp_max))
   graphics.text(str(temp_max), col+7, y-2, scale=0.5)
   
   temp_min = forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"]
-  draw_icon(DOWN_ARROW, col, y+5, GREY)
+  icons.draw(graphics, icons.DOWN_ARROW, col, y+5, GREY)
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
@@ -225,8 +171,8 @@ def draw_atmosphere(forecast, y: int, time_on_row: float) -> None:
   condition = forecast["current"]["condition"]["text"]
   
   col = 1
-  draw_icon(WIND, col, y-1, GREY)
-  draw_icon(RAIN, col, y+5, LIGHT_BLUE)
+  icons.draw(graphics, icons.WIND, col, y-1, GREY)
+  icons.draw(graphics, icons.RAIN, col, y+5, LIGHT_BLUE)
 
   col += 7
   
@@ -251,7 +197,7 @@ def draw_atmosphere(forecast, y: int, time_on_row: float) -> None:
   graphics.set_pen(LIGHT_GREY)  
   scroll_text(condition, col, y+4, GalacticUnicorn.WIDTH-col-1, math.ceil(GalacticUnicorn.HEIGHT*0.5), time_on_row)
   
-  draw_icon(HUMIDITY, col, y-1, LIGHT_BLUE, second_pen=lambda _x,_y: GREY)
+  icons.draw(graphics, icons.HUMIDITY, col, y-1, LIGHT_BLUE, second_pen=lambda _x,_y: GREY)
   
   col += 7
   
