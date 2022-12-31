@@ -299,7 +299,8 @@ def draw_clock(forecast, y: int, time_on_row: float) -> None:
   for h_tick in range(1,25):
     # h_tick represents the hour we're building towards. eg first loop is midnight to 1am
     tick_colour = LIGHT_GREY if h_tick == 12 \
-      else DARK_BLUE if (sunrise >= h_tick or sunset <= h_tick) \
+      else ORANGE if (math.floor(sunrise) == h_tick or math.floor(sunset) == h_tick) \
+      else DARK_BLUE if (sunrise > h_tick or sunset < h_tick) \
       else YELLOW
     graphics.set_pen(tick_colour)
     graphics.pixel(h_tick*2+1, y+8)
@@ -315,10 +316,7 @@ def draw_clock(forecast, y: int, time_on_row: float) -> None:
 
 # message to scroll
 rows = [
-  #forecast["current"]["condition"]["text"],
-  #f'Wind {forecast["current"]["wind_mph"]}mph  Humidity {forecast["current"]["humidity"]}%',
   #"Next train: 3.35pm",
-  #f'Sunrise {forecast["forecast"]["forecastday"][0]["astro"]["sunrise"].lower()}  Sunset {forecast["forecast"]["forecastday"][0]["astro"]["sunset"].lower()}',
   draw_clock,
   draw_atmosphere,
   draw_temp,
