@@ -43,9 +43,9 @@ def get_col_for_temp(temp: float):
       return col
   return TEMPERATURE_COLOURS[-1][1]
 
-SCROLL_DURATION = 0.4
-PAUSE_DURATION = 15
-SCROLL_PADDING = 4
+ROW_SCROLL_DURATION = 0.4
+ROW_PAUSE_DURATION = 15
+INFO_SCROLL_SPEED = 7
 
 graphics.set_font("bitmap6")
 
@@ -159,7 +159,7 @@ def get_thermometer_col_from_y(icon_y, temp):
   min_temp = -99 if temp_index == 0 else TEMPERATURE_COLOURS[temp_index-1][0]
   return temp_pen if temp >= max_temp or (temp > min_temp and temp <= max_temp) else BLACK
   
-def draw_temp(forecast, y: int):
+def draw_temp(forecast, y: int, time_on_row: float):
   temp = forecast["current"]["temp_c"]  
   feels_like = forecast["current"]["feelslike_c"]
   
@@ -187,10 +187,11 @@ def draw_temp(forecast, y: int):
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
-def draw_atmosphere(forecast, y: int):
+def draw_atmosphere(forecast, y: int, time_on_row: float):
   wind = forecast["current"]["wind_mph"]
   humidity = forecast["current"]["humidity"]
   rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
+  condition = forecast["current"]["condition"]["text"]
   
   col = 1
   draw_icon(WIND, col, y-1, GREY)
@@ -201,19 +202,38 @@ def draw_atmosphere(forecast, y: int):
   wind_colour = RED if wind > 20 \
     else YELLOW if wind > 10 \
     else GREEN if wind < 3 \
-    else GREY
+    else LIGHT_GREY
   graphics.set_pen(wind_colour)
   graphics.text(str(wind), col, y-2, scale=0.5)
   
   rain_colour = BLUE if rain_chance > 70 \
     else LIGHT_BLUE if rain_chance > 30 \
-    else GREY
+    else GREEN if rain_chance == 0 \
+    else LIGHT_GREY
   graphics.set_pen(rain_colour)
   graphics.text(str(rain_chance), col, y+4, scale=0.5)
   
   col += max(graphics.measure_text(str(wind), scale=0.5), graphics.measure_text(str(rain_chance), scale=0.5))  
   if col < GalacticUnicorn.WIDTH*0.5:
     col = math.floor(GalacticUnicorn.WIDTH*0.5)
+    
+  graphics.set_pen(LIGHT_GREY)
+  
+  # scroll this across our gap
+  graphics.set_clip(col, y+4, GalacticUnicorn.WIDTH, math.ceil(GalacticUnicorn.HEIGHT*0.5))
+  condition_max_scroll = (graphics.measure_text(condition, scale=0.5)) - (GalacticUnicorn.WIDTH - col)
+  if condition_max_scroll > 0:
+    time_on_row -= ROW_SCROLL_DURATION # don't start early 
+    condition_scroll_duration = condition_max_scroll / INFO_SCROLL_SPEED
+    condition_scroll_t = (time_on_row % condition_scroll_duration) / condition_scroll_duration
+    if math.floor(time_on_row/condition_scroll_duration)%2 == 1: # back and forth
+      condition_scroll_t = 1 - condition_scroll_t
+    condition_scroll_offset = math.ceil(lerp(2, -condition_max_scroll-2, condition_scroll_t))
+  else:
+    condition_scroll_offset = 0
+  
+  graphics.text(condition, col + condition_scroll_offset, y+4, scale=0.5)
+  graphics.remove_clip()
     
   draw_icon(HUMIDITY, col, y-1, LIGHT_BLUE, second_pen=lambda _x,_y: GREY)
   
@@ -244,14 +264,14 @@ while True:
   graphics.set_pen(BLACK)
   graphics.clear()
   
-  scroll_t = min(1, time_on_row/SCROLL_DURATION)
+  scroll_t = min(1, time_on_row/ROW_SCROLL_DURATION)
 
   prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
   current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-  rows[current_row-1](forecast, prev_y)
-  rows[current_row](forecast, current_y)
+  rows[current_row-1](forecast, prev_y, time_on_row)
+  rows[current_row](forecast, current_y, time_on_row)
   
-  if time_on_row > (SCROLL_DURATION + PAUSE_DURATION):
+  if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):
     current_row = (current_row + 1) % len(rows)
     row_start_tickms = now
   
@@ -266,14 +286,8 @@ while True:
     else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_DOWN) \
     else 0
   if speed_btn != speed_btn_prev and speed_btn != 0:
-    PAUSE_DURATION = max(0, PAUSE_DURATION + speed_btn)
+    ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
   speed_btn_prev = speed_btn
-
-  """
-  for temp_col_i in range(len(TEMPERATURE_COLOURS)):
-    graphics.set_pen(TEMPERATURE_COLOURS[temp_col_i][1])
-    graphics.pixel(GalacticUnicorn.WIDTH-1, temp_col_i)
-  """
     
   # update the display
   gu.update(graphics)
