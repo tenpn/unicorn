@@ -43,7 +43,7 @@ def get_col_for_temp(temp: float):
       return col
   return TEMPERATURE_COLOURS[-1][1]
 
-ROW_SCROLL_DURATION = 0.4
+ROW_SCROLL_DURATION = 0.5
 ROW_PAUSE_DURATION = 15
 INFO_SCROLL_SPEED = 5
 
@@ -59,6 +59,12 @@ def lerp(a: float, b: float, t: float) -> float:
 
 def ease_in_out(t: float) -> float:
   return (2*t*t) if t < 0.5 else (1 - (math.pow(-2*t+2, 2))*0.5)
+
+def ease_out(t: float) -> float:
+  return 1-(1-t)*(1-t)
+
+def ease_in(t: float) -> float:
+  return t*t
 
 def status_handler(mode, status, ip):
     # reports wifi connection status
@@ -231,6 +237,8 @@ def draw_atmosphere(forecast, y: int, time_on_row: float):
   graphics.text(str(humidity), col, y-2, scale=0.5)
   
 def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float):
+  """will clip text to box. eases in/out, uses INFO_SCROLL_SPEED
+  """
   graphics.set_clip(left, top, width, height)
   max_scroll = (graphics.measure_text(text, scale=0.5)) - width
   if max_scroll > 0:
@@ -270,7 +278,7 @@ while True:
   graphics.set_pen(BLACK)
   graphics.clear()
   
-  scroll_t = min(1, time_on_row/ROW_SCROLL_DURATION)
+  scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
 
   prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
   current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
