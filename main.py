@@ -45,7 +45,7 @@ def get_col_for_temp(temp: float):
 
 ROW_SCROLL_DURATION = 0.4
 ROW_PAUSE_DURATION = 15
-INFO_SCROLL_SPEED = 7
+INFO_SCROLL_SPEED = 5
 
 graphics.set_font("bitmap6")
 
@@ -54,8 +54,11 @@ row_start_tickms = time.ticks_ms()
 prev_scroll = 0
 current_scroll = 0
 
-def lerp(a: float, b: float, t: float):
+def lerp(a: float, b: float, t: float) -> float:
   return a*(1-t) + b*t
+
+def ease_in_out(t: float) -> float:
+  return (2*t*t) if t < 0.5 else (1 - (math.pow(-2*t+2, 2))*0.5)
 
 def status_handler(mode, status, ip):
     # reports wifi connection status
@@ -217,30 +220,33 @@ def draw_atmosphere(forecast, y: int, time_on_row: float):
   if col < GalacticUnicorn.WIDTH*0.5:
     col = math.floor(GalacticUnicorn.WIDTH*0.5)
     
-  graphics.set_pen(LIGHT_GREY)
+  graphics.set_pen(LIGHT_GREY)  
+  scroll_text(condition, col, y+4, GalacticUnicorn.WIDTH-col, math.ceil(GalacticUnicorn.HEIGHT*0.5), time_on_row)
   
-  # scroll this across our gap
-  graphics.set_clip(col, y+4, GalacticUnicorn.WIDTH, math.ceil(GalacticUnicorn.HEIGHT*0.5))
-  condition_max_scroll = (graphics.measure_text(condition, scale=0.5)) - (GalacticUnicorn.WIDTH - col)
-  if condition_max_scroll > 0:
-    time_on_row -= ROW_SCROLL_DURATION # don't start early 
-    condition_scroll_duration = condition_max_scroll / INFO_SCROLL_SPEED
-    condition_scroll_t = (time_on_row % condition_scroll_duration) / condition_scroll_duration
-    if math.floor(time_on_row/condition_scroll_duration)%2 == 1: # back and forth
-      condition_scroll_t = 1 - condition_scroll_t
-    condition_scroll_offset = math.ceil(lerp(2, -condition_max_scroll-2, condition_scroll_t))
-  else:
-    condition_scroll_offset = 0
-  
-  graphics.text(condition, col + condition_scroll_offset, y+4, scale=0.5)
-  graphics.remove_clip()
-    
   draw_icon(HUMIDITY, col, y-1, LIGHT_BLUE, second_pen=lambda _x,_y: GREY)
   
   col += 7
   
   graphics.set_pen(LIGHT_GREY)
   graphics.text(str(humidity), col, y-2, scale=0.5)
+  
+def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float):
+  graphics.set_clip(left, top, width, height)
+  max_scroll = (graphics.measure_text(text, scale=0.5)) - width
+  if max_scroll > 0:
+    time -= ROW_SCROLL_DURATION # don't start early 
+    scroll_duration = max_scroll / INFO_SCROLL_SPEED
+    scroll_t = ease_in_out((time % scroll_duration) / scroll_duration)
+    # back and forth
+    if math.floor(time/scroll_duration)%2 == 1: 
+      scroll_t = 1 - scroll_t      
+    # with a touch of padding
+    scroll_offset = math.ceil(lerp(2, -max_scroll-2, scroll_t))
+  else:
+    scroll_offset = 0
+  
+  graphics.text(text, left + scroll_offset, top, scale=0.5)
+  graphics.remove_clip()
   
 
 # message to scroll
