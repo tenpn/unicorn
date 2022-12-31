@@ -8,6 +8,7 @@ import machine
 import uasyncio
 import urequests
 import icons
+import ntp_time
 
 ROW_SCROLL_DURATION = 0.5
 ROW_PAUSE_DURATION = 15
@@ -262,6 +263,9 @@ if __name__=="__main__":
     print(f'Wifi connection failed! {e}')
     exit()
     
+  ntp_time.set_time()  
+  print(time.localtime())
+  
   while True:
       
     current_row = 0
