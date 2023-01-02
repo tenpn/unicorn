@@ -250,7 +250,10 @@ def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
       graphics.pixel(h_tick*2+1,y+9)
       
 def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
-  icons.draw(graphics, icons.TRAIN, 0, y-1, BLUE, second_pen=lambda px,py: GREY)
+  # make the train animate by leaving some holes in the smoke
+  missing_smoke = icons.TRAIN_SMOKES[math.floor(time_on_row*3)%len(icons.TRAIN_SMOKES)]
+  icons.draw(graphics, icons.TRAIN, 0, y-1, BLUE, 
+             second_pen=lambda px,py: BLACK if px==missing_smoke[0] and py==missing_smoke[1] else GREY)
   
   if departures is None or len(departures) == 0:
     graphics.set_pen(ORANGE)    

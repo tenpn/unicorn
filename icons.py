@@ -51,6 +51,13 @@ TRAIN = [
   " .. .. ..  ....",
   " .. .. ..   .. ",  
 ]
+# pixel coords of the train smoke
+# to animate it 
+TRAIN_SMOKES = [
+  (1,0), (2,0), (3,0), (4,0), (5,0),
+  (5,1), (6,1), (7,1),
+  (7,0), (8,0)
+]
 
 def draw(graphics, icon, origin_x, origin_y, pen, second_pen=None):
   last_pen = pen
