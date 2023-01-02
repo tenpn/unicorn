@@ -1,11 +1,8 @@
 import math
 import collections
 import proj_secrets
-
-try:
-    import urequests as requests
-except ImportError:
-    import requests
+from urllib.urequest import urlopen
+import json
 
 #URL = "http://localhost:7071/api/trainline"
 URL = "https://ldbws-line.azurewebsites.net/api/trainline"
@@ -18,10 +15,10 @@ def query(left, right):
         right (str): _description_
 
     Returns:
-        _type_: a (u)request object
+        _type_: a (u)request object. close this!!
     """
     fullURL = f"{URL}/?left_crs={left}&right_crs={right}&code={proj_secrets.TRAINS_AUTH}"
-    return requests.get(fullURL)
+    return urlopen(fullURL)
 
 def str_from_decimal_time(dec_time) -> str:
     hrs = math.floor(dec_time)
@@ -39,13 +36,17 @@ def get_timetables() -> Timetables:
         
     trains_response = query(proj_secrets.TRAINS_TO, proj_secrets.TRAINS_FROM)
 
-    if trains_response.status_code != 200:
+    if trains_response is None:
         print(f"something went wrong: code {trains_response.status_code} {trains_response}")
         trains_response.close()
         return None
 
-    trains = trains_response.json()
+    trains = json.loads(trains_response.read())
     trains_response.close()
+    
+    if trains is None or len(trains) == 0:
+        print("trains parsing failed")
+        return None
     
     return Timetables(trains["lr"], trains["rl"], trains["now"])
 

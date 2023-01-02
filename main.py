@@ -6,15 +6,17 @@ import time
 import math
 import machine
 import uasyncio
-import urequests
+from urllib.urequest import urlopen
+import json
 import icons
 import ntp_time
 import trains_azure
+import gc
 
 ROW_SCROLL_DURATION = 0.5
 ROW_PAUSE_DURATION = 15
 INFO_SCROLL_SPEED = 5
-REQUEST_INTERVAL = 3*60*1000
+REQUEST_INTERVAL = 9*60*1000
 
 # "overclock" from the sample code???
 machine.freq(200000000)
@@ -294,36 +296,43 @@ if __name__=="__main__":
     exit()
     
   ntp_time.set_time()  
-  print(time.localtime())
+  
+  forecast_url = f"https://api.weatherapi.com/v1/forecast.json?q={proj_secrets.WEATHER_POSTCODE}&key={proj_secrets.WEATHER_API_KEY}"
   
   while True:
       
+    gc.collect()
+    print(f"starting requests with mem {gc.mem_free()}")
     current_row = 0
     row_start_tickms = time.ticks_ms()
     prev_scroll = 0
     current_scroll = 0
       
-    forecast_req = urequests.get(f"https://api.weatherapi.com/v1/forecast.json?q={proj_secrets.WEATHER_POSTCODE}&key={proj_secrets.WEATHER_API_KEY}")
-
-    if forecast_req.status_code != 200:
-      print("fetching forecast failed " + forecast_req.status_code)
-      forecast_req.close()
-      exit()
-
-    forecast = forecast_req.json()
+    forecast = {}
+    forecast_req = urlopen(forecast_url)
+    if forecast_req is None:
+      print("fetching forecast failed " + forecast_req.status)
+      break
+    
+    forecast = json.loads(forecast_req.read())
     forecast_req.close()
+    if forecast is None or len(forecast) == 0:
+      print("forecast json failed " + forecast_req.status)
+      break
+
+    gc.collect()
+    print("got weather")
     
     timetables = trains_azure.get_timetables()
     next_departures = [] if timetables is None \
       else [timetable_entry[0]["time"]
             for timetable_entry in timetables.rl_timetable]
-    print(next_departures)
 
     brightness_btn_prev : int = 0
     speed_btn_prev : int = 0
     
     req_tickms = time.ticks_ms()
-    print(f"new request " + str(req_tickms))
+    print(f"new request {req_tickms} with mem {gc.mem_free()}")
 
     while time.ticks_diff(time.ticks_ms(), req_tickms) < REQUEST_INTERVAL:
       
