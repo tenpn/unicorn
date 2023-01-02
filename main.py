@@ -35,6 +35,8 @@ GREY = graphics.create_pen(50,50,50)
 LIGHT_GREY = graphics.create_pen(150,150,150)
 BLACK = graphics.create_pen(0, 0, 0)
 YELLOW = graphics.create_pen(255, 255, 50)
+LIGHT_PURPLE = graphics.create_pen(50, 0, 100)
+PURPLE = graphics.create_pen(200, 50, 150)
 RED = graphics.create_pen(255, 50, 50)
 GREEN = graphics.create_pen(50, 255, 50)
 ORANGE = graphics.create_pen(255, 127, 50)
@@ -174,8 +176,8 @@ def draw_atmosphere(forecast, departures, y: int, time_on_row: float) -> None:
   graphics.set_pen(wind_colour)
   graphics.text(str(wind), col, y-2, scale=0.5)
   
-  rain_colour = BLUE if rain_chance > 70 \
-    else LIGHT_BLUE if rain_chance > 30 \
+  rain_colour = PURPLE if rain_chance > 70 \
+    else LIGHT_PURPLE if rain_chance > 30 \
     else GREEN if rain_chance == 0 \
     else LIGHT_GREY
   graphics.set_pen(rain_colour)
@@ -252,6 +254,65 @@ def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
     if h >= h_tick:
       graphics.pixel(h_tick*2+1,y+9)
       
+def draw_timeline(forecast, departures, y: int, time_on_row: float) -> None:
+  (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
+  
+  graphics.set_pen(LIGHT_GREY)
+  graphics.text(f"{h:02d}:{m:02d}", 1, y-2, scale=0.5)  
+  
+  monthday_str = str(monthday)
+  monthday_str_width = graphics.measure_text(monthday_str, scale=0.5)
+  graphics.text(monthday_str, 52-monthday_str_width, y-2, scale=0.5)
+  
+  graphics.set_pen(GREY)
+  month_str = MONTHS[month-1]
+  month_str_width = graphics.measure_text(month_str, scale=0.5)
+  graphics.text(month_str, 52-monthday_str_width-month_str_width-1, y-2, scale=0.5)
+  
+  sunrise = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunrise"])
+  sunset = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunset"])
+  
+  #MAX_RAIN = 1.5
+  
+  # 53 pixels, 2 pixels per hour
+  for h_tick in range(1,25):
+    # h_tick represents the hour we're building towards. eg first loop is midnight to 1am
+    
+    left_tick_x = h_tick*2
+    right_tick_x = left_tick_x+1
+    
+    hour = forecast["forecast"]["forecastday"][0]["hour"][h_tick-1]
+    
+    rain = hour["chance_of_rain"]
+    #rain_height = math.ceil(8.0*min(1, rain))
+    
+    if rain > 20:
+      graphics.set_pen(LIGHT_PURPLE if rain < 50 else PURPLE)
+      graphics.pixel(left_tick_x, y+6)
+      graphics.pixel(right_tick_x, y+6)
+      #graphics.rectangle(left_tick_x, 7-rain_height+y, 1, rain_height)
+      
+    temp = hour["feelslike_c"]
+    graphics.set_pen(get_col_for_temp(temp))
+    graphics.pixel(right_tick_x, y+7)
+    graphics.pixel(left_tick_x, y+7)
+    
+    tick_colour = LIGHT_GREY if h_tick == 12 \
+      else ORANGE if (math.floor(sunrise) == h_tick or math.floor(sunset) == h_tick) \
+      else DARK_BLUE if (sunrise > h_tick or sunset < h_tick) \
+      else YELLOW
+    graphics.set_pen(tick_colour)
+    graphics.pixel(right_tick_x, y+8)
+    
+    # set first tick after half past of prev hour
+    graphics.set_pen(GREY)
+    if h >= h_tick or (h == h_tick-1 and m >= 30):
+      graphics.pixel(left_tick_x,y+9)
+      
+    # set second tick after the new hour
+    if h >= h_tick:
+      graphics.pixel(right_tick_x,y+9)
+      
 def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
   # make the train animate by leaving some holes in the smoke
   missing_smoke = icons.TRAIN_SMOKES[math.floor(time_on_row*3)%len(icons.TRAIN_SMOKES)]
@@ -294,7 +355,8 @@ def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
 
 # message to scroll
 rows = [
-  draw_clock,
+  #draw_clock,
+  draw_timeline,
   draw_atmosphere,
   draw_temp,
   draw_trains,
