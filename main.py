@@ -158,9 +158,11 @@ def draw_atmosphere(forecast, departures, y: int, time_on_row: float) -> None:
   rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
   condition = forecast["current"]["condition"]["text"]
   
+  animate = math.floor(time_on_row*1.5)
+  
   col = 1
-  icons.draw(graphics, icons.WIND, col, y-1, GREY)
-  icons.draw(graphics, icons.RAIN, col, y+5, LIGHT_BLUE)
+  icons.draw(graphics, icons.WIND, col, y-1, GREY, x_scroll=-animate)
+  icons.draw(graphics, icons.RAIN, col, y+5, LIGHT_BLUE, y_scroll=-animate)
 
   col += 7
   
@@ -381,7 +383,7 @@ if __name__=="__main__":
       brightness_btn_prev = brightness_btn
         
       speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
-        else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_DOWN) \
+        else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
         else 0
       if speed_btn != speed_btn_prev and speed_btn != 0:
         ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
