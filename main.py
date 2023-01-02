@@ -253,10 +253,9 @@ def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
   icons.draw(graphics, icons.TRAIN, 0, y-1, BLUE, second_pen=lambda px,py: GREY)
   
   if departures is None or len(departures) == 0:
-    graphics.set_font("bitmap8")
     graphics.set_pen(ORANGE)    
-    graphics.text("No trains", 16, y, scale=0.5)  
-    graphics.set_font("bitmap6")
+    graphics.text("No", 16, y-2, scale=0.5)  
+    graphics.text("Trains", 16, y+4, scale=0.5)  
     return
   
   # how long until departures
@@ -267,6 +266,8 @@ def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
   until_departures = [until_departure
                       for until_departure in until_departures
                       if until_departure >= 0]
+  
+  # scroll train departure times across two rows
   col = 16
   row = y-2
   for departure in until_departures:
