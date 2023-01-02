@@ -158,11 +158,12 @@ def draw_atmosphere(forecast, departures, y: int, time_on_row: float) -> None:
   rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
   condition = forecast["current"]["condition"]["text"]
   
-  animate = math.floor(time_on_row*1.5)
+  wind_animate = math.floor(time_on_row*1.7)
+  rain_animate = math.floor(time_on_row*1.5)
   
   col = 1
-  icons.draw(graphics, icons.WIND, col, y-1, GREY, x_scroll=-animate)
-  icons.draw(graphics, icons.RAIN, col, y+5, LIGHT_BLUE, y_scroll=-animate)
+  icons.draw(graphics, icons.WIND, col, y-1, GREY, x_scroll=-wind_animate)
+  icons.draw(graphics, icons.RAIN, col, y+5, LIGHT_BLUE, y_scroll=-rain_animate)
 
   col += 7
   
