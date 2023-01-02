@@ -250,15 +250,14 @@ def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
       graphics.pixel(h_tick*2+1,y+9)
       
 def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
+  icons.draw(graphics, icons.TRAIN, 0, y-1, BLUE, second_pen=lambda px,py: GREY)
+  
   if departures is None or len(departures) == 0:
     graphics.set_font("bitmap8")
     graphics.set_pen(ORANGE)    
-    graphics.text("No trains", 1, y, scale=0.5)  
+    graphics.text("No trains", 16, y, scale=0.5)  
     graphics.set_font("bitmap6")
     return
-  
-  graphics.set_pen(GREY)
-  graphics.text("Trains:", 1, y-2, scale=0.5)
   
   # how long until departures
   (_,_,_,h,m,_,_,_) = time.localtime(time.time())
@@ -268,21 +267,29 @@ def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
   until_departures = [until_departure
                       for until_departure in until_departures
                       if until_departure >= 0]
-  col = 1
+  col = 16
+  row = y-2
   for departure in until_departures:
     departure_col = RED if departure <= 10 \
       else ORANGE if departure <= 15 \
       else GREEN if departure <= 20 \
       else GREY
+    departure_width = graphics.measure_text(str(departure), scale=0.5) + 2
+    if col + departure_width >= GalacticUnicorn.WIDTH:
+      if row < y: 
+        row = y+4
+        col = 16
+      else:
+        break
     graphics.set_pen(departure_col)    
-    graphics.text(str(departure), col, y+3, scale=0.5)  
-    col += graphics.measure_text(str(departure), scale=0.5) + 1
+    graphics.text(str(departure), col, row, scale=0.5)  
+    col += departure_width
 
 # message to scroll
 rows = [
-  draw_clock,
-  draw_atmosphere,
-  draw_temp,
+  #draw_clock,
+  #draw_atmosphere,
+  #draw_temp,
   draw_trains,
 ]
 
