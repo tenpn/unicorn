@@ -291,9 +291,9 @@ def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
 
 # message to scroll
 rows = [
-  #draw_clock,
-  #draw_atmosphere,
-  #draw_temp,
+  draw_clock,
+  draw_atmosphere,
+  draw_temp,
   draw_trains,
 ]
 
