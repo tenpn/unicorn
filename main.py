@@ -10,7 +10,6 @@ from urllib.urequest import urlopen
 import json
 import icons
 import ntp_time
-import trains_azure
 import gc
 
 ROW_SCROLL_DURATION = 0.5
@@ -126,9 +125,9 @@ def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) 
   graphics.text(text, left + scroll_offset, top, scale=0.5)
   graphics.remove_clip()
 
-def draw_temp(forecast, departures, y: int, time_on_row: floatb) -> None:
-  temp = forecast["current"]["temp_c"]  
-  feels_like = forecast["current"]["feelslike_c"]
+def draw_temp(info, y: int, time_on_row: floatb) -> None:
+  temp = info["temp_now"]
+  feels_like = info["temp_feelslike_now"]
   
   col = 0
   icons.draw(graphics, icons.TEMP, col, y, GREY, 
@@ -144,21 +143,21 @@ def draw_temp(forecast, departures, y: int, time_on_row: floatb) -> None:
   if col < GalacticUnicorn.WIDTH*0.5:
     col = math.floor(GalacticUnicorn.WIDTH*0.5)
   
-  temp_max = forecast["forecast"]["forecastday"][0]["day"]["maxtemp_c"]
+  temp_max = info["temp_max"]
   icons.draw(graphics, icons.UP_ARROW, col, y-1, GREY)
   graphics.set_pen(get_col_for_temp(temp_max))
   graphics.text(str(temp_max), col+7, y-2, scale=0.5)
   
-  temp_min = forecast["forecast"]["forecastday"][0]["day"]["mintemp_c"]
+  temp_min = info["temp_min"]
   icons.draw(graphics, icons.DOWN_ARROW, col, y+5, GREY)
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
-def draw_atmosphere(forecast, departures, y: int, time_on_row: float) -> None:
-  wind = forecast["current"]["wind_mph"]
-  humidity = forecast["current"]["humidity"]
-  rain_chance = forecast["forecast"]["forecastday"][0]["day"]["daily_chance_of_rain"]
-  condition = forecast["current"]["condition"]["text"]
+def draw_atmosphere(info, y: int, time_on_row: float) -> None:
+  wind = info["wind_now"]
+  humidity = info["humidity_now"]
+  rain_chance = info["rain_%_today"]
+  condition = info["condition"] 
   
   wind_animate = math.floor(time_on_row*1.7)
   rain_animate = math.floor(time_on_row*1.5)
@@ -215,7 +214,7 @@ MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
 
-def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
+def draw_clock(info, y: int, time_on_row: float) -> None:
   graphics.set_font("bitmap8")
       
   (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
@@ -223,8 +222,8 @@ def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
   graphics.text(f"{h:02d}:{m:02d}", 2, y, scale=0.5)
   graphics.set_font("bitmap6")
   
-  sunrise = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunrise"])
-  sunset = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunset"])
+  sunrise = info["sunrise"] 
+  sunset = info["sunset"] 
   
   monthday_str = str(monthday)
   monthday_str_width = graphics.measure_text(monthday_str, scale=0.5)
@@ -254,7 +253,7 @@ def draw_clock(forecast, departures, y: int, time_on_row: float) -> None:
     if h >= h_tick:
       graphics.pixel(h_tick*2+1,y+9)
       
-def draw_timeline(forecast, departures, y: int, time_on_row: float) -> None:
+def draw_timeline(info, y: int, time_on_row: float) -> None:
   (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
   
   graphics.set_pen(LIGHT_GREY)
@@ -269,8 +268,8 @@ def draw_timeline(forecast, departures, y: int, time_on_row: float) -> None:
   month_str_width = graphics.measure_text(month_str, scale=0.5)
   graphics.text(month_str, 52-monthday_str_width-month_str_width-1, y-2, scale=0.5)
   
-  sunrise = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunrise"])
-  sunset = decimal_time_from_time_str(forecast["forecast"]["forecastday"][0]["astro"]["sunset"])
+  sunrise = info["sunrise"] 
+  sunset = info["sunset"] 
   
   #MAX_RAIN = 1.5
   
@@ -281,9 +280,7 @@ def draw_timeline(forecast, departures, y: int, time_on_row: float) -> None:
     left_tick_x = h_tick*2
     right_tick_x = left_tick_x+1
     
-    hour = forecast["forecast"]["forecastday"][0]["hour"][h_tick-1]
-    
-    rain = hour["chance_of_rain"]
+    rain = info["rain_%_hours"][h_tick-1]
     #rain_height = math.ceil(8.0*min(1, rain))
     
     if rain > 20:
@@ -292,7 +289,7 @@ def draw_timeline(forecast, departures, y: int, time_on_row: float) -> None:
       graphics.pixel(right_tick_x, y+6)
       #graphics.rectangle(left_tick_x, 7-rain_height+y, 1, rain_height)
       
-    temp = hour["feelslike_c"]
+    temp = info["temp_feelslike_hours"][h_tick-1]
     graphics.set_pen(get_col_for_temp(temp))
     graphics.pixel(right_tick_x, y+7)
     graphics.pixel(left_tick_x, y+7)
@@ -313,13 +310,15 @@ def draw_timeline(forecast, departures, y: int, time_on_row: float) -> None:
     if h >= h_tick:
       graphics.pixel(right_tick_x,y+9)
       
-def draw_trains(forecast, departures, y: int, time_on_row: float) -> None:
+def draw_trains(info, y: int, time_on_row: float) -> None:
   # make the train animate by leaving some holes in the smoke
   missing_smoke = icons.TRAIN_SMOKES[math.floor(time_on_row*3)%len(icons.TRAIN_SMOKES)]
   icons.draw(graphics, icons.TRAIN, 0, y-1, BLUE, 
              second_pen=lambda px,py: BLACK if px==missing_smoke[0] and py==missing_smoke[1] else GREY)
   
-  if departures is None or len(departures) == 0:
+  departures = info["departures_times"]
+  
+  if len(departures) == 0:
     graphics.set_pen(ORANGE)    
     graphics.text("No", 16, y-2, scale=0.5)  
     graphics.text("Trains", 16, y+4, scale=0.5)  
@@ -373,7 +372,7 @@ if __name__=="__main__":
     
   ntp_time.set_time()  
   
-  forecast_url = f"https://api.weatherapi.com/v1/forecast.json?q={proj_secrets.WEATHER_POSTCODE}&key={proj_secrets.WEATHER_API_KEY}"
+  info_url = f"https://ldbws-line.azurewebsites.net/api/localinfo?code={proj_secrets.WEB_AUTH}&train={proj_secrets.TRAINS_FROM}&weather={proj_secrets.WEATHER_POSTCODE}"
   
   while True:
       
@@ -384,26 +383,16 @@ if __name__=="__main__":
     prev_scroll = 0
     current_scroll = 0
       
-    forecast = {}
-    forecast_req = urlopen(forecast_url)
-    if forecast_req is None:
-      print("fetching forecast failed " + forecast_req.status)
+    info = {}
+    info_req = urlopen(info_url)
+    if info_req is None:
+      print("fetching forecast failed " + info_req.status)
       break
     
-    forecast = json.loads(forecast_req.read())
-    forecast_req.close()
-    if forecast is None or len(forecast) == 0:
-      print("forecast json failed " + forecast_req.status)
-      break
-
+    info = json.loads(info_req.read())
+    info_req.close()
     gc.collect()
-    print("got weather")
     
-    timetables = trains_azure.get_timetables()
-    next_departures = [] if timetables is None \
-      else [timetable_entry[0]["time"]
-            for timetable_entry in timetables.rl_timetable]
-
     brightness_btn_prev : int = 0
     speed_btn_prev : int = 0
     
@@ -422,8 +411,8 @@ if __name__=="__main__":
 
       prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
       current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-      rows[current_row-1](forecast, next_departures, prev_y, time_on_row)
-      rows[current_row](forecast, next_departures, current_y, time_on_row)
+      rows[current_row-1](info, prev_y, time_on_row)
+      rows[current_row](info, current_y, time_on_row)
       
       # progres bar for next row 
       graphics.set_pen(DARK_GREY)
