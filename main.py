@@ -387,14 +387,11 @@ if __name__=="__main__":
     # still seems to run out of memory after a few hours, probably fragmentation? 
     # so let's reset things after a while
     if time.ticks_diff(row_start_tickms, boot_time) >= RESET_INTERVAL:
-      machine.soft_reset()
+      machine.reset()
     
     gc.collect()
     print(f"starting requests with mem {gc.mem_free()}")
-    current_row = 0
-    prev_scroll = 0
-    current_scroll = 0
-      
+          
     info = {}
     info_req = urlopen(info_url)
     if info_req is None:
@@ -412,6 +409,7 @@ if __name__=="__main__":
     print(f"new request {req_tickms} with mem {gc.mem_free()}")
 
     while time.ticks_diff(time.ticks_ms(), req_tickms) < REQUEST_INTERVAL:
+      current_row = 0    
       
       while current_row < len(rows):
         
