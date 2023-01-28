@@ -61,6 +61,10 @@ TRAIN_SMOKES = [
   (5,1), (6,1), (7,1),
   (7,0), (8,0)
 ]
+TRAIN_WHEELS = [
+  (12,9), (13,9), 
+  (13,8), (12,8),   
+]
 
 def draw(graphics, icon, origin_x:int, origin_y:int, pen, second_pen=None, x_scroll:int=0, y_scroll:int=0) -> None:
   last_pen = pen

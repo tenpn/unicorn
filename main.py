@@ -13,7 +13,7 @@ import ntp_time
 import gc
 
 ROW_SCROLL_DURATION = 0.5
-ROW_PAUSE_DURATION = 15
+ROW_PAUSE_DURATION = 12
 INFO_SCROLL_SPEED = 5
 REQUEST_INTERVAL = 9*60*1000
 RESET_INTERVAL = 60*60*100
@@ -314,8 +314,11 @@ def draw_timeline(info, y: int, time_on_row: float) -> None:
 def draw_trains(info, y: int, time_on_row: float) -> None:
   # make the train animate by leaving some holes in the smoke
   missing_smoke = icons.TRAIN_SMOKES[math.floor(time_on_row*3)%len(icons.TRAIN_SMOKES)]
+  missing_wheel = icons.TRAIN_WHEELS[math.floor(time_on_row*4)%len(icons.TRAIN_WHEELS)]
   icons.draw(graphics, icons.TRAIN, 0, y-1, BLUE, 
-             second_pen=lambda px,py: BLACK if px==missing_smoke[0] and py==missing_smoke[1] else GREY)
+             second_pen=lambda px,py: BLACK if (px==missing_smoke[0] and py==missing_smoke[1]) \
+                                                or (px==missing_wheel[0] and py==missing_wheel[1]) \
+                                      else GREY)
   
   departures = info["departures_times"]
   
@@ -356,10 +359,10 @@ def draw_trains(info, y: int, time_on_row: float) -> None:
 # message to scroll
 rows = [
   #draw_clock,
-  draw_timeline,
   draw_atmosphere,
   draw_temp,
   draw_trains,
+  draw_timeline,
 ]
 
 if __name__=="__main__":
@@ -410,47 +413,53 @@ if __name__=="__main__":
 
     while time.ticks_diff(time.ticks_ms(), req_tickms) < REQUEST_INTERVAL:
       
-      now = time.ticks_ms()
-      time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
-
-      graphics.set_pen(BLACK)
-      graphics.clear()
-      
-      scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
-
-      prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
-      current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-      rows[current_row-1](info, prev_y, time_on_row)
-      rows[current_row](info, current_y, time_on_row)
-      
-      # progres bar for next row 
-      graphics.set_pen(DARK_GREY)
-      row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
-      progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
-      for progress_y in range(0, progress_pixels):
-        graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
-      
-      if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):
-        current_row = (current_row + 1) % len(rows)
-        row_start_tickms = now
+      while current_row < len(rows):
         
-      # inputs
+        row_start_tickms = time.ticks_ms()
+        
+        while True:
       
-      brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
-        else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
-        else 0
-      if brightness_btn != brightness_btn_prev and brightness_btn != 0:
-        gu.adjust_brightness(0.1 * brightness_btn)
-      brightness_btn_prev = brightness_btn
-        
-      speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
-        else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
-        else 0
-      if speed_btn != speed_btn_prev and speed_btn != 0:
-        ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
-      speed_btn_prev = speed_btn
-        
-      # update the display
-      gu.update(graphics)
+          now = time.ticks_ms()
+          time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
+          if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):        
+            current_row +=1           
+            break
 
-      time.sleep(0.02)
+          graphics.set_pen(BLACK)
+          graphics.clear()
+          
+          scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
+
+          prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
+          current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
+          rows[current_row-1](info, prev_y, time_on_row)
+          rows[current_row](info, current_y, time_on_row)
+          
+          # progres bar for next row 
+          graphics.set_pen(DARK_GREY)
+          row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
+          progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
+          for progress_y in range(0, progress_pixels):
+            graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
+                      
+          # inputs
+          
+          brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
+            else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
+            else 0
+          if brightness_btn != brightness_btn_prev and brightness_btn != 0:
+            gu.adjust_brightness(0.1 * brightness_btn)
+          brightness_btn_prev = brightness_btn
+            
+          speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
+            else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
+            else 0
+          if speed_btn != speed_btn_prev and speed_btn != 0:
+            ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
+          speed_btn_prev = speed_btn
+            
+          # update the display
+          gu.update(graphics)
+
+          time.sleep(0.02)
+        
