@@ -16,6 +16,7 @@ ROW_SCROLL_DURATION = 0.5
 ROW_PAUSE_DURATION = 15
 INFO_SCROLL_SPEED = 5
 REQUEST_INTERVAL = 9*60*1000
+RESET_INTERVAL = 60*60*100
 
 # "overclock" from the sample code???
 machine.freq(200000000)
@@ -374,12 +375,20 @@ if __name__=="__main__":
   
   info_url = f"https://ldbws-line.azurewebsites.net/api/localinfo?code={proj_secrets.WEB_AUTH}&train={proj_secrets.TRAINS_FROM}&weather={proj_secrets.WEATHER_POSTCODE}"
   
+  boot_time = time.ticks_ms()
+  
   while True:
-      
+        
+    row_start_tickms = time.ticks_ms()
+    
+    # still seems to run out of memory after a few hours, probably fragmentation? 
+    # so let's reset things after a while
+    if time.ticks_diff(row_start_tickms, boot_time) >= RESET_INTERVAL:
+      machine.soft_reset()
+    
     gc.collect()
     print(f"starting requests with mem {gc.mem_free()}")
     current_row = 0
-    row_start_tickms = time.ticks_ms()
     prev_scroll = 0
     current_scroll = 0
       
