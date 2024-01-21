@@ -6,7 +6,7 @@ UP_ARROW = [
   "   #   ",
 ]
 DOWN_ARROW = list(reversed(UP_ARROW))
-TEMP = [
+TEMP = [             
   "  ###  ",
   "  # #  ",
   "  #.#  ",

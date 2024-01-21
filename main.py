@@ -126,7 +126,7 @@ def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) 
   graphics.text(text, left + scroll_offset, top, scale=0.5)
   graphics.remove_clip()
 
-def draw_temp(info, y: int, time_on_row: floatb) -> None:
+def draw_temp(info, y: int, time_on_row: float) -> None:
   temp = info["temp_now"]
   feels_like = info["temp_feelslike_now"]
   
@@ -376,7 +376,7 @@ if __name__=="__main__":
     
   ntp_time.set_time()  
   
-  info_url = f"https://ldbws-line.azurewebsites.net/api/localinfo?code={proj_secrets.WEB_AUTH}&train={proj_secrets.TRAINS_FROM}&weather={proj_secrets.WEATHER_POSTCODE}"
+  info_url = f"https://ldbws-line.azurewebsites.net/api/localinfo?code={proj_secrets.WEB_AUTH}&trainFrom={proj_secrets.TRAINS_FROM}&trainTo={proj_secrets.TRAINS_TO}&weather={proj_secrets.WEATHER_POSTCODE}"
   
   boot_time = time.ticks_ms()
   
