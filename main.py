@@ -11,12 +11,31 @@ import json
 import icons
 import ntp_time
 import gc
+import os
+import sys
 
 ROW_SCROLL_DURATION = 0.5
 ROW_PAUSE_DURATION = 12
 INFO_SCROLL_SPEED = 5
 REQUEST_INTERVAL = 9*60*1000
-RESET_INTERVAL = 60*60*100
+# retry sooner if a fetch fails, and reset after this many failures in a row
+FETCH_RETRY_INTERVAL = 60*1000
+MAX_FETCH_FAILURES = 3
+# reset every hour regardless, to clear out heap fragmentation
+RESET_INTERVAL = 60*60*1000
+
+# hardware watchdog resets the board if we hang or crash without feeding it.
+# rp2040 max timeout is ~8.3s. hold A at boot to disable it (eg for REPL work)
+WATCHDOG_ENABLED = True
+WATCHDOG_TIMEOUT_MS = 8000
+
+# unexpected exceptions get appended here, so we can see what killed it.
+# capped so a boot loop doesn't wear out the flash
+CRASH_LOG = "crash.txt"
+CRASH_LOG_MAX_BYTES = 8*1024
+# wait before resetting after a crash, so a boot loop doesn't hammer the server
+CRASH_RESET_DELAY_MS = 30*1000
+WIFI_FAIL_RESET_DELAY_MS = 10*1000
 
 # "overclock" from the sample code???
 machine.freq(200000000)
@@ -73,8 +92,58 @@ def ease_out(t: float) -> float:
 def ease_in(t: float) -> float:
   return t*t
 
+watchdog = None
+
+def feed_watchdog() -> None:
+  if watchdog is not None:
+    watchdog.feed()
+
+def sleep_ms_fed(ms: int) -> None:
+  """sleep without letting the watchdog fire"""
+  end = time.ticks_add(time.ticks_ms(), ms)
+  while time.ticks_diff(end, time.ticks_ms()) > 0:
+    feed_watchdog()
+    time.sleep_ms(100)
+
+def log_crash(e: Exception) -> None:
+  try:
+    gc.collect()
+    try:
+      size = os.stat(CRASH_LOG)[6]
+    except OSError:
+      size = 0
+    if size >= CRASH_LOG_MAX_BYTES:
+      print("crash log full, not writing")
+      return
+    with open(CRASH_LOG, "a") as f:
+      f.write(f"--- localtime {time.localtime()} uptime {time.ticks_ms()}ms mem {gc.mem_free()}\n")
+      sys.print_exception(e, f)
+  except Exception as log_e:
+    print(f"couldn't write crash log: {log_e}")
+
+def reset_after(ms: int, reason: str) -> None:
+  print(f"resetting in {ms}ms: {reason}")
+  try:
+    graphics.set_pen(RED)
+    graphics.line(0, 0, 0, GalacticUnicorn.HEIGHT)
+    gu.update(graphics)
+  except Exception:
+    pass
+  sleep_ms_fed(ms)
+  # shutting the wifi chip down first may help it come back cleanly after reset
+  try:
+    import network
+    wlan = network.WLAN(network.STA_IF)
+    wlan.disconnect()
+    wlan.active(False)
+  except Exception:
+    pass
+  # if this hangs, the watchdog (no longer fed) will reset us anyway
+  machine.reset()
+
 def status_handler(mode, status, ip):
-    # reports wifi connection status
+    # reports wifi connection status. called ~1/sec while connecting
+    feed_watchdog()
     print(mode, status, ip)
     print('Connecting to wifi...')
     
@@ -365,99 +434,149 @@ rows = [
   draw_timeline,
 ]
 
-if __name__=="__main__":
+def set_time_with_retries(attempts: int = 3) -> None:
+  for attempt in range(attempts):
+    feed_watchdog()
+    try:
+      ntp_time.set_time()
+      return
+    except Exception as e:
+      print(f"ntp failed ({attempt+1}/{attempts}): {e}")
+      if attempt == attempts-1:
+        raise
+      sleep_ms_fed(2000)
+
+def fetch_info(url: str):
+  gc.collect()
+  print(f"starting request with mem {gc.mem_free()}")
+  feed_watchdog()
+  info_req = urlopen(url)
+  try:
+    feed_watchdog()
+    return json.loads(info_req.read())
+  finally:
+    info_req.close()
+    feed_watchdog()
+
+def show_rows(info, duration_ms: int) -> None:
+  """animate through the rows until duration_ms has passed (checked after each full cycle)"""
+  global ROW_PAUSE_DURATION
+  
+  brightness_btn_prev : int = 0
+  speed_btn_prev : int = 0
+  
+  start_tickms = time.ticks_ms()
+  
+  while time.ticks_diff(time.ticks_ms(), start_tickms) < duration_ms:
+    current_row = 0    
+    
+    while current_row < len(rows):
+      
+      row_start_tickms = time.ticks_ms()
+      
+      while True:
+    
+        time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
+        if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):        
+          current_row +=1           
+          break
+
+        graphics.set_pen(BLACK)
+        graphics.clear()
+        
+        scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
+
+        prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
+        current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
+        rows[current_row-1](info, prev_y, time_on_row)
+        rows[current_row](info, current_y, time_on_row)
+        
+        # progres bar for next row 
+        graphics.set_pen(DARK_GREY)
+        row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
+        progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
+        for progress_y in range(0, progress_pixels):
+          graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
+                    
+        # inputs
+        
+        brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
+          else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
+          else 0
+        if brightness_btn != brightness_btn_prev and brightness_btn != 0:
+          gu.adjust_brightness(0.1 * brightness_btn)
+        brightness_btn_prev = brightness_btn
+          
+        speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
+          else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
+          else 0
+        if speed_btn != speed_btn_prev and speed_btn != 0:
+          ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
+        speed_btn_prev = speed_btn
+          
+        # update the display
+        gu.update(graphics)
+        feed_watchdog()
+
+        time.sleep(0.02)
+
+def main() -> None:
+  global watchdog
+  
+  if WATCHDOG_ENABLED and not gu.is_pressed(GalacticUnicorn.SWITCH_A):
+    watchdog = machine.WDT(timeout=WATCHDOG_TIMEOUT_MS)
+  else:
+    print("watchdog disabled")
 
   try:
     network_manager = NetworkManager(proj_secrets.WIFI_COUNTRY, status_handler=status_handler)
     uasyncio.get_event_loop().run_until_complete(network_manager.client(proj_secrets.WIFI_SSID, proj_secrets.WIFI_PSK))
   except Exception as e:
     print(f'Wifi connection failed! {e}')
-    exit()
+    reset_after(WIFI_FAIL_RESET_DELAY_MS, "no wifi")
     
-  ntp_time.set_time()  
+  set_time_with_retries()
   
   info_url = f"https://ldbws-line.azurewebsites.net/api/localinfo?code={proj_secrets.WEB_AUTH}&trainFrom={proj_secrets.TRAINS_FROM}&trainTo={proj_secrets.TRAINS_TO}&weather={proj_secrets.WEATHER_POSTCODE}"
   
   boot_time = time.ticks_ms()
+  info = None
+  fetch_failures = 0
   
   while True:
-        
-    row_start_tickms = time.ticks_ms()
-    
     # still seems to run out of memory after a few hours, probably fragmentation? 
     # so let's reset things after a while
-    if time.ticks_diff(row_start_tickms, boot_time) >= RESET_INTERVAL:
-      machine.reset()
+    if time.ticks_diff(time.ticks_ms(), boot_time) >= RESET_INTERVAL:
+      reset_after(0, "scheduled reset")
+    
+    try:
+      # on failure, info keeps the previous data so we carry on showing it
+      info = fetch_info(info_url)
+      fetch_failures = 0
+      display_ms = REQUEST_INTERVAL
+    except Exception as e:
+      fetch_failures += 1
+      print(f"fetch failed ({fetch_failures}/{MAX_FETCH_FAILURES}): {e}")
+      if fetch_failures >= MAX_FETCH_FAILURES:
+        log_crash(e)
+        reset_after(0, "too many fetch failures")
+      display_ms = FETCH_RETRY_INTERVAL
     
     gc.collect()
-    print(f"starting requests with mem {gc.mem_free()}")
-          
-    info = {}
-    info_req = urlopen(info_url)
-    if info_req is None:
-      print("fetching forecast failed " + info_req.status)
-      break
+    print(f"showing rows at {time.ticks_ms()} with mem {gc.mem_free()}")
     
-    info = json.loads(info_req.read())
-    info_req.close()
-    gc.collect()
-    
-    brightness_btn_prev : int = 0
-    speed_btn_prev : int = 0
-    
-    req_tickms = time.ticks_ms()
-    print(f"new request {req_tickms} with mem {gc.mem_free()}")
+    if info is None:
+      # nothing to show yet
+      sleep_ms_fed(display_ms)
+    else:
+      show_rows(info, display_ms)
 
-    while time.ticks_diff(time.ticks_ms(), req_tickms) < REQUEST_INTERVAL:
-      current_row = 0    
-      
-      while current_row < len(rows):
-        
-        row_start_tickms = time.ticks_ms()
-        
-        while True:
-      
-          now = time.ticks_ms()
-          time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
-          if time_on_row > (ROW_SCROLL_DURATION + ROW_PAUSE_DURATION):        
-            current_row +=1           
-            break
-
-          graphics.set_pen(BLACK)
-          graphics.clear()
-          
-          scroll_t = ease_in(min(1, time_on_row/ROW_SCROLL_DURATION))
-
-          prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
-          current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-          rows[current_row-1](info, prev_y, time_on_row)
-          rows[current_row](info, current_y, time_on_row)
-          
-          # progres bar for next row 
-          graphics.set_pen(DARK_GREY)
-          row_t = (time_on_row) / (ROW_PAUSE_DURATION+ROW_SCROLL_DURATION)
-          progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
-          for progress_y in range(0, progress_pixels):
-            graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
-                      
-          # inputs
-          
-          brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
-            else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
-            else 0
-          if brightness_btn != brightness_btn_prev and brightness_btn != 0:
-            gu.adjust_brightness(0.1 * brightness_btn)
-          brightness_btn_prev = brightness_btn
-            
-          speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
-            else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
-            else 0
-          if speed_btn != speed_btn_prev and speed_btn != 0:
-            ROW_PAUSE_DURATION = max(0, ROW_PAUSE_DURATION + speed_btn)
-          speed_btn_prev = speed_btn
-            
-          # update the display
-          gu.update(graphics)
-
-          time.sleep(0.02)
-        
+if __name__=="__main__":
+  try:
+    main()
+  except Exception as e:
+    # KeyboardInterrupt isn't an Exception, so ctrl-c still drops to the REPL
+    # (but the watchdog will reset us shortly after unless it was disabled at boot)
+    sys.print_exception(e)
+    log_crash(e)
+    reset_after(CRASH_RESET_DELAY_MS, "crash")
