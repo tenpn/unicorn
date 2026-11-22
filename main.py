@@ -55,6 +55,7 @@ gu.set_brightness(0.5)
 
 # pen colours to draw with
 DARKER_GREY = graphics.create_pen(8,8,8)
+DIM_BLUE = graphics.create_pen(5,5,16)
 DARK_GREY = graphics.create_pen(15,15,15)
 GREY = graphics.create_pen(50,50,50)
 LIGHT_GREY = graphics.create_pen(150,150,150)
@@ -466,6 +467,8 @@ def fetch_info(url: str) -> dict:
     feed_watchdog()
     if info_req.status_code != 200:
       raise OSError(f"HTTP {info_req.status_code}")
+    # can't stream into json.load: .raw is a python BodyStream, and json.load
+    # needs a native stream. the body is only ~500 bytes anyway
     return info_req.json()
   finally:
     info_req.close()
@@ -491,7 +494,32 @@ def mem_used_y(free: int, used: int) -> int:
   used_frac = used / (free + used)
   return round((GalacticUnicorn.HEIGHT - 1) * (1 - used_frac))
 
-def show_rows(info: dict, duration_ms: int) -> None:
+def largest_free_block() -> int:
+  """biggest single allocation the heap can satisfy right now, in bytes.
+  micropython.mem_info() only prints this, so binary search with real
+  allocations instead. ~18 tries, each failure costs a gc, so call sparingly"""
+  gc.collect()
+  lo = 0
+  hi = gc.mem_free()
+  while lo < hi:
+    mid = (lo + hi + 1) // 2
+    try:
+      block = bytearray(mid)
+      del block
+      lo = mid
+    except MemoryError:
+      hi = mid - 1
+  gc.collect()
+  return lo
+
+def frag_y(largest: int, boot_largest: int) -> int:
+  """y for the fragmentation pixel: bottom row when the largest free block is
+  as big as at boot, top row when it has shrunk to nothing. relative to boot
+  because even a fresh heap's largest block is only ~1/3 of free memory"""
+  frac = min(1, largest / boot_largest) if boot_largest > 0 else 0
+  return round((GalacticUnicorn.HEIGHT - 1) * frac)
+
+def show_rows(info: dict, duration_ms: int, heap_frag_y: int) -> None:
   """animate through the rows until duration_ms has passed (checked after each full cycle)"""
   global ROW_PAUSE_DURATION
   
@@ -541,6 +569,10 @@ def show_rows(info: dict, duration_ms: int) -> None:
         # memory used, in the same column. drawn after the bar so it shows over it
         graphics.set_pen(DARKER_GREY)
         graphics.pixel(GalacticUnicorn.WIDTH-1, mem_y)
+        # fragmentation, measured after each fetch. drawn last, so it wins if
+        # it lands on the same pixel as memory used
+        graphics.set_pen(DIM_BLUE)
+        graphics.pixel(GalacticUnicorn.WIDTH-1, heap_frag_y)
                     
         # inputs
         
@@ -586,11 +618,13 @@ def main() -> None:
   boot_time = time.ticks_ms()
   info: dict | None = None
   fetch_failures = 0
-  
+  boot_largest = largest_free_block()
+  print(f"largest free block at boot {boot_largest}")
+
   while True:
-    # still seems to run out of memory after a few hours, probably fragmentation? 
-    # so let's reset things after a while. not in dev mode (watchdog off), so
-    # long runs from tools.py aren't cut off
+    # unverified: it seemed to run out of memory after a few hours. a soak
+    # test showed no fragmentation or leak, but reset after a while anyway.
+    # not in dev mode (watchdog off), so long runs from tools.py aren't cut off
     if watchdog is not None and time.ticks_diff(time.ticks_ms(), boot_time) >= RESET_INTERVAL:
       reset_after(0, "scheduled reset")
     
@@ -614,14 +648,20 @@ def main() -> None:
     # show_rows clears the screen, so hold the status long enough to see
     sleep_ms_fed(FETCH_STATUS_HOLD_MS)
     
-    gc.collect()
-    print(f"showing rows at {time.ticks_ms()} with mem {gc.mem_free()}")
-    
+    # fragmentation mostly changes when a fetch swaps old info for new, so
+    # measuring once per fetch is enough
+    feed_watchdog()
+    largest = largest_free_block()
+    feed_watchdog()
+    free = gc.mem_free()
+    heap_frag_y = frag_y(largest, boot_largest)
+    print(f"showing rows at {time.ticks_ms()} with mem {free} largest block {largest} frag_y {heap_frag_y}")
+
     if info is None:
       # nothing to show yet
       sleep_ms_fed(display_ms)
     else:
-      show_rows(info, display_ms)
+      show_rows(info, display_ms, heap_frag_y)
 
 if __name__=="__main__":
   try:
