@@ -138,6 +138,8 @@ def reset_after(ms: int, reason: str) -> None:
     wlan.active(False)
   except Exception:
     pass
+  # give usb a moment to send the print above before the port disappears
+  time.sleep_ms(100)
   # if this hangs, the watchdog (no longer fed) will reset us anyway
   machine.reset()
 
@@ -526,7 +528,7 @@ def main() -> None:
   if WATCHDOG_ENABLED and not gu.is_pressed(GalacticUnicorn.SWITCH_A):
     watchdog = machine.WDT(timeout=WATCHDOG_TIMEOUT_MS)
   else:
-    print("watchdog disabled")
+    print("watchdog and scheduled reset disabled")
 
   try:
     network_manager = NetworkManager(proj_secrets.WIFI_COUNTRY, status_handler=status_handler)
@@ -545,8 +547,9 @@ def main() -> None:
   
   while True:
     # still seems to run out of memory after a few hours, probably fragmentation? 
-    # so let's reset things after a while
-    if time.ticks_diff(time.ticks_ms(), boot_time) >= RESET_INTERVAL:
+    # so let's reset things after a while. not in dev mode (watchdog off), so
+    # long runs from tools.py aren't cut off
+    if watchdog is not None and time.ticks_diff(time.ticks_ms(), boot_time) >= RESET_INTERVAL:
       reset_after(0, "scheduled reset")
     
     try:
