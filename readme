@@ -1,1 +1,3 @@
-used pipkin to install micropython-urllib.urequest on the unicorn
+used pipkin to install micropython-urllib.urequest on the pimoroni galactic unicorn running a RP2040
+
+using mpremote to talk to the unicorn. 
