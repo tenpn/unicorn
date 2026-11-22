@@ -6,8 +6,7 @@ import time
 import math
 import machine
 import uasyncio
-from urllib.urequest import urlopen
-import json
+import requests
 import icons
 import ntp_time
 import gc
@@ -21,6 +20,8 @@ REQUEST_INTERVAL = 9*60*1000
 # retry sooner if a fetch fails, and reset after this many failures in a row
 FETCH_RETRY_INTERVAL = 60*1000
 MAX_FETCH_FAILURES = 3
+# per socket operation, so must stay under WATCHDOG_TIMEOUT_MS
+FETCH_TIMEOUT_S = 5
 # reset every hour regardless, to clear out heap fragmentation
 RESET_INTERVAL = 60*60*1000
 
@@ -452,10 +453,12 @@ def fetch_info(url: str) -> dict:
   gc.collect()
   print(f"starting request with mem {gc.mem_free()}")
   feed_watchdog()
-  info_req = urlopen(url)
+  info_req = requests.get(url, timeout=FETCH_TIMEOUT_S)
   try:
     feed_watchdog()
-    return json.loads(info_req.read())
+    if info_req.status_code != 200:
+      raise OSError(f"HTTP {info_req.status_code}")
+    return info_req.json()
   finally:
     info_req.close()
     feed_watchdog()

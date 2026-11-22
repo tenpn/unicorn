@@ -1,3 +1,9 @@
-used pipkin to install micropython-urllib.urequest on the pimoroni galactic unicorn running a RP2040
+use tools.py to talk to the unicorn, with an mpremote venv.
 
-using mpremote to talk to the unicorn. 
+commands:
+
+- upload: sync files with board
+- run: sync, then run main.py
+- dump: cat any crash.txt
+
+see the file for more.
