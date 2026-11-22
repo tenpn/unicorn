@@ -6,7 +6,7 @@ import machine
 NTP_DELTA = 2208988800
 host = "pool.ntp.org"
 
-def set_time():
+def set_time() -> None:
     NTP_QUERY = bytearray(48)
     NTP_QUERY[0] = 0x1B
     addr = socket.getaddrinfo(host, 123)[0][-1]

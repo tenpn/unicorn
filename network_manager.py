@@ -3,11 +3,23 @@ import network
 import machine
 import uasyncio
 
+# typing isn't on the board; this block is only seen by type checkers
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from typing import Any, Callable
+
 
 class NetworkManager:
     _ifname = ("Client", "Access Point")
 
-    def __init__(self, country="GB", client_timeout=30, access_point_timeout=5, status_handler=None, error_handler=None):
+    def __init__(
+        self,
+        country: str = "GB",
+        client_timeout: int = 30,
+        access_point_timeout: int = 5,
+        status_handler: Callable[[str, bool | None, str], None] | None = None,
+        error_handler: Callable[[str, str], bool] | None = None,
+    ) -> None:
         rp2.country(country)
         self._ap_if = network.WLAN(network.AP_IF)
         self._sta_if = network.WLAN(network.STA_IF)
@@ -19,10 +31,10 @@ class NetworkManager:
         self._error_handler = error_handler
         self.UID = ("{:02X}" * 8).format(*machine.unique_id())
 
-    def isconnected(self):
+    def isconnected(self) -> bool:
         return self._sta_if.isconnected() or self._ap_if.isconnected()
 
-    def config(self, var):
+    def config(self, var: str) -> Any:
         if self._sta_if.active():
             return self._sta_if.config(var)
         else:
@@ -30,42 +42,42 @@ class NetworkManager:
                 return self.UID
             return self._ap_if.config(var)
 
-    def mode(self):
+    def mode(self) -> str | None:
         if self._sta_if.isconnected():
             return self._ifname[0]
         if self._ap_if.isconnected():
             return self._ifname[1]
         return None
 
-    def ifaddress(self):
+    def ifaddress(self) -> str:
         if self._sta_if.isconnected():
             return self._sta_if.ifconfig()[0]
         if self._ap_if.isconnected():
             return self._ap_if.ifconfig()[0]
         return '0.0.0.0'
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         if self._sta_if.isconnected():
             self._sta_if.disconnect()
         if self._ap_if.isconnected():
             self._ap_if.disconnect()
 
-    async def wait(self, mode):
+    async def wait(self, mode: int) -> None:
         while not self.isconnected():
             self._handle_status(mode, None)
             await uasyncio.sleep_ms(1000)
 
-    def _handle_status(self, mode, status):
+    def _handle_status(self, mode: int, status: bool | None) -> None:
         if callable(self._status_handler):
             self._status_handler(self._ifname[mode], status, self.ifaddress())
 
-    def _handle_error(self, mode, msg):
+    def _handle_error(self, mode: int, msg: str) -> None:
         if callable(self._error_handler):
             if self._error_handler(self._ifname[mode], msg):
                 return
         raise RuntimeError(msg)
 
-    async def client(self, ssid, psk):
+    async def client(self, ssid: str, psk: str) -> None:
         if self._sta_if.isconnected():
             self._handle_status(network.STA_IF, True)
             return
@@ -85,7 +97,7 @@ class NetworkManager:
             self._handle_status(network.STA_IF, False)
             self._handle_error(network.STA_IF, "WIFI Client Failed")
 
-    async def access_point(self):
+    async def access_point(self) -> None:
         if self._ap_if.isconnected():
             self._handle_status(network.AP_IF, True)
             return

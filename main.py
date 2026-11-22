@@ -72,7 +72,7 @@ TEMPERATURE_COLOURS = [
   [25, graphics.create_pen(255,125,50)],
   [99, graphics.create_pen(255,50,50)], 
 ]
-def get_col_for_temp(temp: float):
+def get_col_for_temp(temp: float) -> int:
   for (max_temp, col) in TEMPERATURE_COLOURS:
     if temp <= max_temp:
       return col
@@ -92,7 +92,7 @@ def ease_out(t: float) -> float:
 def ease_in(t: float) -> float:
   return t*t
 
-watchdog = None
+watchdog: machine.WDT | None = None
 
 def feed_watchdog() -> None:
   if watchdog is not None:
@@ -143,7 +143,7 @@ def reset_after(ms: int, reason: str) -> None:
   # if this hangs, the watchdog (no longer fed) will reset us anyway
   machine.reset()
 
-def status_handler(mode, status, ip):
+def status_handler(mode: str, status: bool | None, ip: str) -> None:
     # reports wifi connection status. called ~1/sec while connecting
     feed_watchdog()
     print(mode, status, ip)
@@ -171,13 +171,13 @@ def status_handler(mode, status, ip):
         graphics.line(0,0,0,GalacticUnicorn.HEIGHT)
         gu.update(graphics)
         
-def get_thermometer_col_from_y(icon_y, temp):
+def get_thermometer_col_from_y(icon_y: int, temp: float) -> int:
   temp_index = min(len(TEMPERATURE_COLOURS), 7-icon_y)
   (max_temp, temp_pen) = TEMPERATURE_COLOURS[temp_index]
   min_temp = -99 if temp_index == 0 else TEMPERATURE_COLOURS[temp_index-1][0]
   return temp_pen if temp >= max_temp or (temp > min_temp and temp <= max_temp) else BLACK  
   
-def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) -> None:
+def scroll_text(text: str, left: int, top: int, width: int, height: int, time: float) -> None:
   """will clip text to box. eases in/out, uses INFO_SCROLL_SPEED
   """
   graphics.set_clip(left, top, width, height)
@@ -197,7 +197,7 @@ def scroll_text(text:str, left:int, top:int, width:int, height:int, time:float) 
   graphics.text(text, left + scroll_offset, top, scale=0.5)
   graphics.remove_clip()
 
-def draw_temp(info, y: int, time_on_row: float) -> None:
+def draw_temp(info: dict, y: int, time_on_row: float) -> None:
   temp = info["temp_now"]
   feels_like = info["temp_feelslike_now"]
   
@@ -225,7 +225,7 @@ def draw_temp(info, y: int, time_on_row: float) -> None:
   graphics.set_pen(get_col_for_temp(temp_min))
   graphics.text(str(temp_min), col+7, y+4, scale=0.5)
   
-def draw_atmosphere(info, y: int, time_on_row: float) -> None:
+def draw_atmosphere(info: dict, y: int, time_on_row: float) -> None:
   wind = info["wind_now"]
   humidity = info["humidity_now"]
   rain_chance = info["rain_%_today"]
@@ -286,7 +286,7 @@ MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
 
-def draw_clock(info, y: int, time_on_row: float) -> None:
+def draw_clock(info: dict, y: int, time_on_row: float) -> None:
   graphics.set_font("bitmap8")
       
   (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
@@ -325,7 +325,7 @@ def draw_clock(info, y: int, time_on_row: float) -> None:
     if h >= h_tick:
       graphics.pixel(h_tick*2+1,y+9)
       
-def draw_timeline(info, y: int, time_on_row: float) -> None:
+def draw_timeline(info: dict, y: int, time_on_row: float) -> None:
   (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
   
   graphics.set_pen(LIGHT_GREY)
@@ -382,7 +382,7 @@ def draw_timeline(info, y: int, time_on_row: float) -> None:
     if h >= h_tick:
       graphics.pixel(right_tick_x,y+9)
       
-def draw_trains(info, y: int, time_on_row: float) -> None:
+def draw_trains(info: dict, y: int, time_on_row: float) -> None:
   # make the train animate by leaving some holes in the smoke
   missing_smoke = icons.TRAIN_SMOKES[math.floor(time_on_row*3)%len(icons.TRAIN_SMOKES)]
   missing_wheel = icons.TRAIN_WHEELS[math.floor(time_on_row*4)%len(icons.TRAIN_WHEELS)]
@@ -448,7 +448,7 @@ def set_time_with_retries(attempts: int = 3) -> None:
         raise
       sleep_ms_fed(2000)
 
-def fetch_info(url: str):
+def fetch_info(url: str) -> dict:
   gc.collect()
   print(f"starting request with mem {gc.mem_free()}")
   feed_watchdog()
@@ -460,7 +460,7 @@ def fetch_info(url: str):
     info_req.close()
     feed_watchdog()
 
-def show_rows(info, duration_ms: int) -> None:
+def show_rows(info: dict, duration_ms: int) -> None:
   """animate through the rows until duration_ms has passed (checked after each full cycle)"""
   global ROW_PAUSE_DURATION
   
@@ -542,7 +542,7 @@ def main() -> None:
   info_url = f"https://trainledazure.vercel.app/api/localinfo?code={proj_secrets.WEB_AUTH}&trainFrom={proj_secrets.TRAINS_FROM}&trainTo={proj_secrets.TRAINS_TO}&weather={proj_secrets.WEATHER_POSTCODE}"
   
   boot_time = time.ticks_ms()
-  info = None
+  info: dict | None = None
   fetch_failures = 0
   
   while True:

@@ -1,3 +1,9 @@
+# typing isn't on the board; this block is only seen by type checkers
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+  from typing import Callable
+  from picographics import PicoGraphics
+
 UP_ARROW = [
   "   #   ",
   "  ###  ",
@@ -66,7 +72,7 @@ TRAIN_WHEELS = [
   (13,8), (12,8),   
 ]
 
-def draw(graphics, icon, origin_x:int, origin_y:int, pen, second_pen=None, x_scroll:int=0, y_scroll:int=0) -> None:
+def draw(graphics: PicoGraphics, icon: list[str], origin_x: int, origin_y: int, pen: int, second_pen: Callable[[int, int], int | None] | None = None, x_scroll: int = 0, y_scroll: int = 0) -> None:
   last_pen = pen
   graphics.set_pen(pen)
   

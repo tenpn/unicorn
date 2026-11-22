@@ -11,6 +11,7 @@ from typing import NoReturn
 
 import serial  # pyserial, installed alongside mpremote
 from serial.tools import list_ports
+from serial.tools.list_ports_common import ListPortInfo
 
 PROJECT_DIR = Path(__file__).resolve().parent
 SECRETS_FILE = "proj_secrets.py"
@@ -24,7 +25,7 @@ def fail(msg: str) -> NoReturn:
   sys.exit(1)
 
 
-def board_ports() -> list:
+def board_ports() -> list[ListPortInfo]:
   return [
     p for p in list_ports.comports()
     if p.vid == RPI_VID or "micropython" in (p.manufacturer or "").lower()
@@ -48,7 +49,7 @@ def find_port() -> str:
   )
 
 
-def mpremote(port: str, *args: str, capture: bool = False) -> subprocess.CompletedProcess:
+def mpremote(port: str, *args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
   cmd = [sys.executable, "-m", "mpremote", "connect", port, *args]
   try:
     return subprocess.run(
