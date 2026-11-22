@@ -537,7 +537,7 @@ def main() -> None:
     
   set_time_with_retries()
   
-  info_url = f"https://ldbws-line.azurewebsites.net/api/localinfo?code={proj_secrets.WEB_AUTH}&trainFrom={proj_secrets.TRAINS_FROM}&trainTo={proj_secrets.TRAINS_TO}&weather={proj_secrets.WEATHER_POSTCODE}"
+  info_url = f"https://trainledazure.vercel.app/api/localinfo?code={proj_secrets.WEB_AUTH}&trainFrom={proj_secrets.TRAINS_FROM}&trainTo={proj_secrets.TRAINS_TO}&weather={proj_secrets.WEATHER_POSTCODE}"
   
   boot_time = time.ticks_ms()
   info = None
