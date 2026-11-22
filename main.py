@@ -54,6 +54,7 @@ gu = GalacticUnicorn()
 gu.set_brightness(0.5)
 
 # pen colours to draw with
+DARKER_GREY = graphics.create_pen(8,8,8)
 DARK_GREY = graphics.create_pen(15,15,15)
 GREY = graphics.create_pen(50,50,50)
 LIGHT_GREY = graphics.create_pen(150,150,150)
@@ -170,6 +171,9 @@ def status_handler(mode: str, status: bool | None, ip: str) -> None:
     if status is not None:
       if status:
         print('Wifi connection successful!')
+        graphics.set_pen(GREEN)
+        graphics.rectangle(0, 0, 1, GalacticUnicorn.HEIGHT)
+        gu.update(graphics)
       else:
         print('Wifi connection failed!')
         graphics.set_pen(RED)
@@ -469,7 +473,10 @@ def fetch_info(url: str) -> dict:
 
 def draw_fetch_status(failures: int, pen: int) -> None:
   """show fetch progress in the status column, a third of its height per attempt.
-  earlier failed attempts stay orange, the current attempt uses pen"""
+  earlier failed attempts stay orange, the current attempt uses pen.
+  also redraws the wifi column green, as we only fetch once connected"""
+  graphics.set_pen(GREEN)
+  graphics.rectangle(0, 0, 1, GalacticUnicorn.HEIGHT)
   graphics.set_pen(BLACK)
   graphics.rectangle(FETCH_STATUS_X, 0, 1, GalacticUnicorn.HEIGHT)
   for attempt in range(failures+1):
@@ -478,6 +485,11 @@ def draw_fetch_status(failures: int, pen: int) -> None:
     graphics.set_pen(pen if attempt == failures else ORANGE)
     graphics.rectangle(FETCH_STATUS_X, top, 1, bottom-top)
   gu.update(graphics)
+
+def mem_used_y(free: int, used: int) -> int:
+  """y for the memory pixel: bottom row is 0% of the heap used, top row is 100%"""
+  used_frac = used / (free + used)
+  return round((GalacticUnicorn.HEIGHT - 1) * (1 - used_frac))
 
 def show_rows(info: dict, duration_ms: int) -> None:
   """animate through the rows until duration_ms has passed (checked after each full cycle)"""
@@ -494,7 +506,15 @@ def show_rows(info: dict, duration_ms: int) -> None:
     while current_row < len(rows):
       
       row_start_tickms = time.ticks_ms()
-      
+      # drawing churns out garbage, so without a collect the reading mostly
+      # shows how long since the last automatic gc. collect then measure,
+      # once per row rather than every frame as both walk the heap
+      gc.collect()
+      mem_free = gc.mem_free()
+      mem_alloc = gc.mem_alloc()
+      mem_y = mem_used_y(mem_free, mem_alloc)
+      print(f"row {rows[current_row].__name__} free {mem_free} alloc {mem_alloc} mem_y {mem_y}")
+
       while True:
     
         time_on_row = time.ticks_diff(time.ticks_ms(), row_start_tickms)/1000.0
@@ -518,6 +538,9 @@ def show_rows(info: dict, duration_ms: int) -> None:
         progress_pixels = math.ceil(lerp(0, GalacticUnicorn.HEIGHT, (1-row_t)))
         for progress_y in range(0, progress_pixels):
           graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
+        # memory used, in the same column. drawn after the bar so it shows over it
+        graphics.set_pen(DARKER_GREY)
+        graphics.pixel(GalacticUnicorn.WIDTH-1, mem_y)
                     
         # inputs
         

@@ -42,7 +42,7 @@ Pylance has no MicroPython stubs. These errors are expected and can be ignored:
 
 - `Import "machine" / "galactic" / "picographics" / "network" / "uasyncio" / "rp2" could not be resolved`
 - the warning `Import "requests" could not be resolved from source`. Pyright's bundled CPython `requests` stubs still type-check the calls, and the subset the board uses (`get`, `timeout`, `status_code`, `json()`, `close()`) has the same signatures.
-- `"ticks_ms" / "ticks_diff" / "ticks_add" / "sleep_ms" is not a known attribute of module "time"`, plus `gc.mem_free` and `sys.print_exception`
+- `"ticks_ms" / "ticks_diff" / "ticks_add" / "sleep_ms" is not a known attribute of module "time"`, plus `gc.mem_free`, `gc.mem_alloc` and `sys.print_exception`
 - tuple-size mismatches on `time.localtime()` (MicroPython returns 8 fields, CPython returns 9)
 
 `pyrightconfig.json` points Pylance and pyright at `.venv` (Python 3.15). If "Alternative syntax for unions requires Python 3.10 or newer" shows up, Pylance has lost that setting. Fix the config or reload the editor; don't change the annotations.
