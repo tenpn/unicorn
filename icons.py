@@ -83,7 +83,7 @@ def draw(graphics: PicoGraphics, icon: list[str], origin_x: int, origin_y: int, 
       px = (x + x_scroll)%len(icon[py])
       
       current_pen = pen if icon[py][px] == '#' \
-        else second_pen(px,py) if icon[py][px] == '.' \
+        else second_pen(px,py) if icon[py][px] == '.' and second_pen is not None \
         else None
       if current_pen is not None:
         if current_pen != last_pen:
