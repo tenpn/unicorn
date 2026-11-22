@@ -22,12 +22,16 @@ FETCH_RETRY_INTERVAL = 60*1000
 MAX_FETCH_FAILURES = 3
 # per socket operation, so must stay under WATCHDOG_TIMEOUT_MS
 FETCH_TIMEOUT_S = 5
+# fetch status lights. column 0 is the wifi status, so use the next one.
+# split into MAX_FETCH_FAILURES sections, one per attempt
+FETCH_STATUS_X = 1
+FETCH_STATUS_HOLD_MS = 500
 # reset every hour regardless, to clear out heap fragmentation
 RESET_INTERVAL = 60*60*1000
 
 # hardware watchdog resets the board if we hang or crash without feeding it.
 # rp2040 max timeout is ~8.3s. hold A at boot to disable it (eg for REPL work)
-WATCHDOG_ENABLED = True
+WATCHDOG_ENABLED = False
 WATCHDOG_TIMEOUT_MS = 8000
 
 # unexpected exceptions get appended here, so we can see what killed it.
@@ -463,6 +467,18 @@ def fetch_info(url: str) -> dict:
     info_req.close()
     feed_watchdog()
 
+def draw_fetch_status(failures: int, pen: int) -> None:
+  """show fetch progress in the status column, a third of its height per attempt.
+  earlier failed attempts stay orange, the current attempt uses pen"""
+  graphics.set_pen(BLACK)
+  graphics.rectangle(FETCH_STATUS_X, 0, 1, GalacticUnicorn.HEIGHT)
+  for attempt in range(failures+1):
+    top = attempt * GalacticUnicorn.HEIGHT // MAX_FETCH_FAILURES
+    bottom = (attempt+1) * GalacticUnicorn.HEIGHT // MAX_FETCH_FAILURES
+    graphics.set_pen(pen if attempt == failures else ORANGE)
+    graphics.rectangle(FETCH_STATUS_X, top, 1, bottom-top)
+  gu.update(graphics)
+
 def show_rows(info: dict, duration_ms: int) -> None:
   """animate through the rows until duration_ms has passed (checked after each full cycle)"""
   global ROW_PAUSE_DURATION
@@ -555,18 +571,25 @@ def main() -> None:
     if watchdog is not None and time.ticks_diff(time.ticks_ms(), boot_time) >= RESET_INTERVAL:
       reset_after(0, "scheduled reset")
     
+    draw_fetch_status(fetch_failures, BLUE)
     try:
       # on failure, info keeps the previous data so we carry on showing it
       info = fetch_info(info_url)
-      fetch_failures = 0
-      display_ms = REQUEST_INTERVAL
     except Exception as e:
       fetch_failures += 1
       print(f"fetch failed ({fetch_failures}/{MAX_FETCH_FAILURES}): {e}")
       if fetch_failures >= MAX_FETCH_FAILURES:
+        draw_fetch_status(fetch_failures-1, RED)
         log_crash(e)
-        reset_after(0, "too many fetch failures")
+        reset_after(FETCH_STATUS_HOLD_MS, "too many fetch failures")
+      draw_fetch_status(fetch_failures-1, ORANGE)
       display_ms = FETCH_RETRY_INTERVAL
+    else:
+      draw_fetch_status(fetch_failures, GREEN)
+      fetch_failures = 0
+      display_ms = REQUEST_INTERVAL
+    # show_rows clears the screen, so hold the status long enough to see
+    sleep_ms_fed(FETCH_STATUS_HOLD_MS)
     
     gc.collect()
     print(f"showing rows at {time.ticks_ms()} with mem {gc.mem_free()}")
