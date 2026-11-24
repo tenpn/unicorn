@@ -106,20 +106,6 @@ def draw_atmosphere(info: dict, y: int, time_on_screen: float) -> None:
   graphics.set_pen(LIGHT_GREY)
   graphics.text(str(humidity), col, y-2, scale=0.5)
   
-def decimal_time_from_time_str(time_str: str) -> float:
-  """easier to do maths with decimal time!
-
-  Args:
-      time_str (str): "HH:MM AM"/"HH:MM PM"
-
-  Returns:
-      float: 24hour.fraction-through-hour
-  """
-  h12 = int(time_str[0:2]) 
-  m = float(time_str[3:5])
-  h24 = h12 if time_str[6] == "A" else (h12+12)
-  return h24 + (m/60.0)
-  
 MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
