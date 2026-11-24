@@ -10,13 +10,30 @@ import gc
 # how long each screen stays after sliding in. the volume up/sleep buttons change it
 SCREEN_PAUSE_DURATION = 12
 
+# last frame's button directions, so a press acts once rather than every frame it's held
+brightness_btn_prev = 0
+speed_btn_prev = 0
+
+def handle_buttons() -> None:
+  """brightness up/down change brightness. volume up/sleep lengthen/shorten SCREEN_PAUSE_DURATION"""
+  global SCREEN_PAUSE_DURATION, brightness_btn_prev, speed_btn_prev
+
+  brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
+    else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
+    else 0
+  if brightness_btn != brightness_btn_prev and brightness_btn != 0:
+    gu.adjust_brightness(0.1 * brightness_btn)
+  brightness_btn_prev = brightness_btn
+
+  speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
+    else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
+    else 0
+  if speed_btn != speed_btn_prev and speed_btn != 0:
+    SCREEN_PAUSE_DURATION = max(0, SCREEN_PAUSE_DURATION + speed_btn)
+  speed_btn_prev = speed_btn
+
 def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
   """animate through the screens until duration_ms has passed (checked after each full cycle)"""
-  global SCREEN_PAUSE_DURATION
-
-  brightness_btn_prev : int = 0
-  speed_btn_prev : int = 0
-
   start_tickms = time.ticks_ms()
 
   while time.ticks_diff(time.ticks_ms(), start_tickms) < duration_ms:
@@ -59,21 +76,7 @@ def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
           graphics.pixel(GalacticUnicorn.WIDTH-1, (current_y - 1) + (GalacticUnicorn.HEIGHT - 1) - progress_y)
         draw_heap_status(mem_y, heap_frag_y)
 
-        # inputs
-
-        brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
-          else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
-          else 0
-        if brightness_btn != brightness_btn_prev and brightness_btn != 0:
-          gu.adjust_brightness(0.1 * brightness_btn)
-        brightness_btn_prev = brightness_btn
-
-        speed_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_VOLUME_UP) \
-          else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_SLEEP) \
-          else 0
-        if speed_btn != speed_btn_prev and speed_btn != 0:
-          SCREEN_PAUSE_DURATION = max(0, SCREEN_PAUSE_DURATION + speed_btn)
-        speed_btn_prev = speed_btn
+        handle_buttons()
 
         # update the display
         gu.update(graphics)
