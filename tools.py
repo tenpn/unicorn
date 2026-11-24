@@ -15,7 +15,7 @@ from serial.tools.list_ports_common import ListPortInfo
 
 PROJECT_DIR = Path(__file__).resolve().parent
 SECRETS_FILE = "proj_secrets.py"
-CRASH_LOG = "crash.txt"  # keep in sync with CRASH_LOG in main.py
+CRASH_LOG = "crash.txt"  # keep in sync with CRASH_LOG in lifecycle.py
 RPI_VID = 0x2E8A  # Raspberry Pi USB vendor id, used by RP2040 MicroPython
 NO_CRASH_LOG_MARKER = "__tools_no_crash_log__"
 

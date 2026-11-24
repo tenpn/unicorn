@@ -13,11 +13,11 @@ Run it as `.venv/bin/python tools.py {upload,run,dump} [--port PORT]`. It's a wr
 - `dump` prints `crash.txt` from the board. It stops `main.py`, because mpremote has to send ctrl-C to get into the raw REPL. That can't be avoided. The user doesn't want `dump` to reset the board afterwards, so don't add that back.
 - Uploading or running resets the board. Don't run any of these commands without asking the user first.
 
-Related behaviour in `main.py`:
+Related behaviour on the board:
 
 - When `WATCHDOG_ENABLED = False`, or A is held at boot, the watchdog is off and so is the hourly `RESET_INTERVAL` reset (dev mode).
 - The watchdog and the hourly reset should both be on in the copy the board normally runs.
-- Unexpected exceptions get appended to `crash.txt`. A scheduled reset isn't a crash, so it doesn't write anything there.
+- Unexpected exceptions get appended to `crash.txt` (`CRASH_LOG` in `lifecycle.py`). A scheduled reset isn't a crash, so it doesn't write anything there.
 
 ## Type annotations
 
@@ -49,6 +49,17 @@ Pylance has no MicroPython stubs. These errors are expected and can be ignored:
 
 To type-check every file, run `.venv/bin/pyright` (it's in `requirements.txt`). Pylance only checks files that are open. Every error should be one of the expected ones above. Treat anything else as a real problem.
 
+## Layout
+
+Domain terms (Screen, Carousel, Info, Connection status, Heap status) are defined in `GLOSSARY.md`.
+
+- `main.py`: watchdog toggle, fetching Info, the main loop and the top-level crash handler
+- `display.py`: `graphics`, `gu`, pens and easing. Everything else imports these from here
+- `lifecycle.py`: the watchdog, crash log and resets
+- `screens.py`: one `draw_*` function per screen, and the `SCREENS` list
+- `carousel.py`: cycles through the screens and handles the buttons
+- `status.py`: connection status and heap status
+
 ## Style
 
-`main.py`, `icons.py` and `tools.py` use 2-space indentation. `network_manager.py` and `ntp_time.py` use 4 (they came from sample code). Match the file you're editing.
+Everything uses 2-space indentation except `network_manager.py` and `ntp_time.py`, which use 4 (they came from sample code). Match the file you're editing.
