@@ -110,6 +110,41 @@ MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
 
+def draw_date(month: int, monthday: int, text_y: int) -> None:
+  """month and day, right-aligned to the end of the hour ticks"""
+  graphics.set_pen(LIGHT_GREY)
+  monthday_str = str(monthday)
+  monthday_str_width = graphics.measure_text(monthday_str, scale=0.5)
+  graphics.text(monthday_str, 52-monthday_str_width, text_y, scale=0.5)
+  
+  graphics.set_pen(GREY)
+  month_str = MONTHS[month-1]
+  month_str_width = graphics.measure_text(month_str, scale=0.5)
+  graphics.text(month_str, 52-monthday_str_width-month_str_width-1, text_y, scale=0.5)
+
+def draw_hour_tick(h_tick: int, h: int, m: int, sunrise: float, sunset: float, y: int) -> None:
+  """one hour of the 24 hour bar along the bottom: 2 pixels per hour, so 53 wide.
+  h_tick is the hour we're building towards, eg 1 is midnight to 1am.
+  the top pixel shows day or night, the bottom two fill in as the hour passes"""
+  left_tick_x = h_tick*2
+  right_tick_x = left_tick_x+1
+  
+  tick_colour = LIGHT_GREY if h_tick == 12 \
+    else ORANGE if (math.floor(sunrise) == h_tick or math.floor(sunset) == h_tick) \
+    else DARK_BLUE if (sunrise > h_tick or sunset < h_tick) \
+    else YELLOW
+  graphics.set_pen(tick_colour)
+  graphics.pixel(right_tick_x, y+8)
+  
+  # set first tick after half past of prev hour
+  graphics.set_pen(GREY)
+  if h >= h_tick or (h == h_tick-1 and m >= 30):
+    graphics.pixel(left_tick_x,y+9)
+    
+  # set second tick after the new hour
+  if h >= h_tick:
+    graphics.pixel(right_tick_x,y+9)
+
 def draw_clock(info: dict, y: int, time_on_screen: float) -> None:
   graphics.set_font("bitmap8")
       
@@ -118,36 +153,10 @@ def draw_clock(info: dict, y: int, time_on_screen: float) -> None:
   graphics.text(f"{h:02d}:{m:02d}", 2, y, scale=0.5)
   graphics.set_font("bitmap6")
   
-  sunrise = info["sunrise"] 
-  sunset = info["sunset"] 
+  draw_date(month, monthday, y)
   
-  monthday_str = str(monthday)
-  monthday_str_width = graphics.measure_text(monthday_str, scale=0.5)
-  graphics.text(monthday_str, 52-monthday_str_width, y, scale=0.5)
-  
-  graphics.set_pen(GREY)
-  month_str = MONTHS[month-1]
-  month_str_width = graphics.measure_text(month_str, scale=0.5)
-  graphics.text(month_str, 52-monthday_str_width-month_str_width-1, y, scale=0.5)
-  
-  # 53 pixels, 2 pixels per hour
   for h_tick in range(1,25):
-    # h_tick represents the hour we're building towards. eg first loop is midnight to 1am
-    tick_colour = LIGHT_GREY if h_tick == 12 \
-      else ORANGE if (math.floor(sunrise) == h_tick or math.floor(sunset) == h_tick) \
-      else DARK_BLUE if (sunrise > h_tick or sunset < h_tick) \
-      else YELLOW
-    graphics.set_pen(tick_colour)
-    graphics.pixel(h_tick*2+1, y+8)
-    
-    # set first tick after half past of prev hour
-    graphics.set_pen(GREY)
-    if h >= h_tick or (h == h_tick-1 and m >= 30):
-      graphics.pixel(h_tick*2,y+9)
-      
-    # set second tick after the new hour
-    if h >= h_tick:
-      graphics.pixel(h_tick*2+1,y+9)
+    draw_hour_tick(h_tick, h, m, info["sunrise"], info["sunset"], y)
       
 def draw_timeline(info: dict, y: int, time_on_screen: float) -> None:
   (_,month,monthday,h,m,_,_,_) = time.localtime(time.time())
@@ -155,24 +164,11 @@ def draw_timeline(info: dict, y: int, time_on_screen: float) -> None:
   graphics.set_pen(LIGHT_GREY)
   graphics.text(f"{h:02d}:{m:02d}", 1, y-2, scale=0.5)  
   
-  monthday_str = str(monthday)
-  monthday_str_width = graphics.measure_text(monthday_str, scale=0.5)
-  graphics.text(monthday_str, 52-monthday_str_width, y-2, scale=0.5)
-  
-  graphics.set_pen(GREY)
-  month_str = MONTHS[month-1]
-  month_str_width = graphics.measure_text(month_str, scale=0.5)
-  graphics.text(month_str, 52-monthday_str_width-month_str_width-1, y-2, scale=0.5)
-  
-  sunrise = info["sunrise"] 
-  sunset = info["sunset"] 
+  draw_date(month, monthday, y-2)
   
   #MAX_RAIN = 1.5
   
-  # 53 pixels, 2 pixels per hour
   for h_tick in range(1,25):
-    # h_tick represents the hour we're building towards. eg first loop is midnight to 1am
-    
     left_tick_x = h_tick*2
     right_tick_x = left_tick_x+1
     
@@ -190,21 +186,7 @@ def draw_timeline(info: dict, y: int, time_on_screen: float) -> None:
     graphics.pixel(right_tick_x, y+7)
     graphics.pixel(left_tick_x, y+7)
     
-    tick_colour = LIGHT_GREY if h_tick == 12 \
-      else ORANGE if (math.floor(sunrise) == h_tick or math.floor(sunset) == h_tick) \
-      else DARK_BLUE if (sunrise > h_tick or sunset < h_tick) \
-      else YELLOW
-    graphics.set_pen(tick_colour)
-    graphics.pixel(right_tick_x, y+8)
-    
-    # set first tick after half past of prev hour
-    graphics.set_pen(GREY)
-    if h >= h_tick or (h == h_tick-1 and m >= 30):
-      graphics.pixel(left_tick_x,y+9)
-      
-    # set second tick after the new hour
-    if h >= h_tick:
-      graphics.pixel(right_tick_x,y+9)
+    draw_hour_tick(h_tick, h, m, info["sunrise"], info["sunset"], y)
       
 def draw_trains(info: dict, y: int, time_on_screen: float) -> None:
   # make the train animate by leaving some holes in the smoke
