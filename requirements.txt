@@ -7,3 +7,5 @@ mpremote==1.29.0
 pyserial==3.5
 # .venv/bin/pyright type-checks the project; [nodejs] bundles node so none is needed on the system
 pyright[nodejs]==1.1.414
+# the simulator's window and --png output (tools.py sim)
+pygame-ce==2.5.8

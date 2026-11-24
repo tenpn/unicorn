@@ -7,3 +7,38 @@ commands:
 - dump: cat any crash.txt
 
 see the file for more.
+
+## simulator
+
+`.venv/bin/python tools.py sim` draws the screens in a window on the Mac, so a
+screen can be iterated on without uploading. it never touches the board.
+
+- `--screen NAME`: start on draw_NAME. it can be any draw_* in screens.py, even
+  one that isn't in SCREENS yet. default: the first in SCREENS
+- `--fixture NAME`: show sim/fixtures/NAME.json. default: the most recently
+  modified fixture. with none at all, it fetches one
+- `--live`: fetch Info now (needs proj_secrets.py), save it as
+  sim/fixtures/YYYYMMDD-HHMM.json and show it
+- `--at HH:MM`: the time the clock starts at. default: the fixture's "at"
+- `--png FILE --t SECONDS`: save one frame and exit, no window
+- `--raw`: framebuffer colours as square pixels rather than LEDs
+
+fixtures are `{"at": "HH:MM", "info": {...}}` and gitignored. copy one and
+edit it for edge cases (no trains, frost, a long condition).
+
+keys: space pause, `,` `.` step a frame while paused, r restart the screen (time_on_screen back to 0),
+l LED/raw, left/right previous/next screen, q quit.
+
+saving screens.py, icons.py, display.py or the fixture reloads it. if that
+fails, the error is printed and the last good frame stays up.
+
+the LED view's dim-pen lift (LED_LIFT in sim/simulator.py) is eyeballed, so
+compare against the board before trusting subtle colours.
+
+it shows one screen at a time where it rests after sliding in: no slide,
+screen timer or status indicators, and switching screens just flicks.
+
+what it can't catch: MicroPython language differences, memory and heap
+fragmentation, speed, and anything in main.py, carousel.py, status.py or
+lifecycle.py. the fakes do fail like the board on float coordinates,
+non-string text and unknown fonts.

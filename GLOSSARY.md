@@ -20,6 +20,10 @@ _Avoid_: Rotation, rows
 The bundle of weather and train data fetched from the local-info API, which the screens draw from.
 _Avoid_: Data, response, payload
 
+**Simulator**:
+A window on the Mac that draws screens the way the display would, so they can be iterated on without the board.
+_Avoid_: Emulator, preview
+
 ## Status indicators
 
 **Connection status**:

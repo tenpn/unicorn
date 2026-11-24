@@ -1,6 +1,9 @@
 """Dev helpers for the Galactic Unicorn, built on mpremote.
 
 usage: python tools.py {upload,run,dump} [--port PORT]
+       python tools.py sim [--screen NAME] [--fixture NAME] [--live] [--at HH:MM] [--png FILE [--t SECONDS]] [--raw]
+
+sim never touches the board, see sim/simulator.py.
 """
 import argparse
 import subprocess
@@ -210,8 +213,17 @@ def main() -> None:
   sub = parser.add_subparsers(dest="command", required=True)
   for name, (_, help_text) in COMMANDS.items():
     sub.add_parser(name, help=help_text)
+  sim_parser = sub.add_parser("sim", help="draw screens in a window on the Mac, no board needed")
   parser.add_argument("--port", help="serial port, if auto-detection picks wrong")
+
+  # imported here so upload/run/dump don't need pygame
+  from sim import simulator
+  simulator.add_arguments(sim_parser)
   args = parser.parse_args()
+
+  if args.command == "sim":
+    simulator.run(args)
+    return
 
   port = args.port or find_port()
   COMMANDS[args.command][0](port, args.port is not None)

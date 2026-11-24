@@ -11,7 +11,11 @@ Run it as `.venv/bin/python tools.py {upload,run,dump} [--port PORT]`. It's a wr
   - If the board resets mid-run, mpremote dies with `OSError: [Errno 6] Device not configured`. `run` catches that, waits for the port to come back, then listens on the serial port directly (pyserial) without interrupting the program.
   - Ctrl-C stops the program on the board, both while mpremote is attached and while `run` is only listening.
 - `dump` prints `crash.txt` from the board. It stops `main.py`, because mpremote has to send ctrl-C to get into the raw REPL. That can't be avoided. The user doesn't want `dump` to reset the board afterwards, so don't add that back.
-- Uploading or running resets the board. Don't run any of these commands without asking the user first.
+- Uploading or running resets the board, so ask the user before running `upload`, `run` or `dump`.
+- `sim` is the Simulator (code in `sim/`). It never touches the board, so run it freely, but only in its `--png` form: `.venv/bin/python tools.py sim --screen trains --png <scratchpad>/trains.png --t 3`, then Read the PNG. Use this to check any change to a screen. The window form is for the user.
+  - `screens.py`, `display.py` and `icons.py` run unchanged against fakes in `sim/fakes/`, ported from pimoroni-pico. Using a `graphics` or `gu` method the fakes lack means adding it there too, ported from the C.
+  - It draws one screen at rest, with no slide, Screen timer or status indicators. Its copy of the Info URL in `sim/fixtures.py` must match `main.py`.
+  - Info fixtures live in `sim/fixtures/` (gitignored). `--live` fetches a fresh one.
 
 Related behaviour on the board:
 
@@ -59,6 +63,7 @@ Domain terms (Screen, Carousel, Info, Connection status, Heap status) are define
 - `screens.py`: one `draw_*` function per screen, and the `SCREENS` list
 - `carousel.py`: cycles through the screens and handles the buttons
 - `status.py`: connection status and heap status
+- `sim/`: the Simulator. Runs on the Mac only, and `upload` skips it because it only copies top-level `.py` files
 
 ## Style
 
