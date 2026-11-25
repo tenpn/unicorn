@@ -5,7 +5,7 @@ A Galactic Unicorn LED matrix that shows local weather and train departures, cyc
 ## Language
 
 **Screen**:
-One full-display view of a single topic, such as trains, temperature, atmosphere or the timeline. Only one screen is shown at a time, apart from the slide between two.
+One full-display view of a single topic, such as trains, weather or the timeline. Only one screen is shown at a time, apart from the slide between two.
 _Avoid_: Row, panel, page, card
 
 **Line**:
@@ -19,6 +19,10 @@ _Avoid_: Rotation, rows
 **Info**:
 The bundle of weather and train data fetched from the local-info API, which the screens draw from.
 _Avoid_: Data, response, payload
+
+**Condition**:
+The current weather in words, such as "Overcast" or "Patchy light drizzle", which the weather screen shows as an icon.
+_Avoid_: Forecast, summary
 
 **Simulator**:
 A window on the Mac that draws screens the way the display would, so they can be iterated on without the board.
