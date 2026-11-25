@@ -147,7 +147,7 @@ def draw_timeline(info: dict, y: int, time_on_screen: float) -> None:
       graphics.pixel(right_tick_x, y+6)
       #graphics.rectangle(left_tick_x, 7-rain_height+y, 1, rain_height)
       
-    temp = info["temp_feelslike_hours"][h_tick-1]
+    temp = info["temp_hours"][h_tick-1]
     graphics.set_pen(get_col_for_temp(temp))
     graphics.pixel(right_tick_x, y+7)
     graphics.pixel(left_tick_x, y+7)
