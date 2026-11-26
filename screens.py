@@ -64,6 +64,11 @@ def temp_scale_row(temp: float, top: int, bottom: int) -> int:
   row = round((top - temp) / step)
   return max(0, min(GalacticUnicorn.HEIGHT - 1, row))
 
+def temp_scale_pen(row: int, top: int, bottom: int) -> int:
+  """pen for the temperature a scale row stands for, so everything on one row matches"""
+  step = (top - bottom) / (GalacticUnicorn.HEIGHT - 1)
+  return get_col_for_temp(top - row*step)
+
 def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
   (icon, pen, dot_pen) = CONDITION_ICONS[condition_category(info["condition"])]
   icons.draw(graphics, icon, 0, y-1, pen,
@@ -90,19 +95,22 @@ def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
   row_max = temp_scale_row(info["temp_max"], top, bottom)
   row_min = temp_scale_row(info["temp_min"], top, bottom)
   for row in range(row_max, row_min+1):
-    graphics.set_pen(get_col_for_temp(top - row*step))
+    graphics.set_pen(temp_scale_pen(row, top, bottom))
     graphics.pixel(col+1, y-1+row)
 
-  graphics.set_pen(get_col_for_temp(temp_now))
-  graphics.pixel(col+2, y-1+temp_scale_row(temp_now, top, bottom))
+  # the dot and the digits are coloured by their row too, not their exact temp, so they match
+  # the bar beside them
+  row_now = temp_scale_row(temp_now, top, bottom)
+  graphics.set_pen(temp_scale_pen(row_now, top, bottom))
+  graphics.pixel(col+2, y-1+row_now)
 
   # whole degrees: decimals are too fine-grained, and they crowd out the rain chance.
   # in the 3x5 digits, to leave the clock room
   temp_max = str(round(info["temp_max"]))
-  icons.draw_digits(graphics, temp_max, col+4, y-1, get_col_for_temp(info["temp_max"]))
+  icons.draw_digits(graphics, temp_max, col+4, y-1, temp_scale_pen(row_max, top, bottom))
 
   temp_min = str(round(info["temp_min"]))
-  icons.draw_digits(graphics, temp_min, col+4, y+5, get_col_for_temp(info["temp_min"]))
+  icons.draw_digits(graphics, temp_min, col+4, y+5, temp_scale_pen(row_min, top, bottom))
 
   # the rain chance goes on the bottom row, centred under the falling rain. both are as wide as
   # 99 and right-aligned against the Screen timer in the last column, so the clock always has
