@@ -8,6 +8,10 @@ import time
 # how long a screen takes to slide in
 SCREEN_SCROLL_DURATION = 0.5
 
+# Rain chance looks at least this many hours ahead, and always until this hour (9pm)
+RAIN_CHANCE_MIN_HOURS = 3
+RAIN_CHANCE_UNTIL_HOUR = 21
+
 # Condition icon for each category, with its pen and the pen for its '.' pixels
 CONDITION_ICONS = {
   "sun": (icons.SUN, YELLOW, None),
@@ -101,7 +105,7 @@ def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
   graphics.text(str(temp_min), col+4, y+4, scale=0.5)
   
   # rain chance right-aligned, so wide temperatures can't push it off the edge
-  rain_chance = info["rain_%_today"]
+  rain_chance = get_rain_chance(info)
   rain_chance_str = str(rain_chance)
   rain_col = GalacticUnicorn.WIDTH - 1 - graphics.measure_text(rain_chance_str, scale=0.5)
   rain_animate = math.floor(time_on_screen*1.5)
@@ -114,6 +118,13 @@ def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
   graphics.set_pen(rain_colour)
   graphics.text(rain_chance_str, rain_col, y+1, scale=0.5)
   
+def get_rain_chance(info: dict) -> int:
+  """the highest hourly chance of rain from this hour until 9pm or 3 hours on,
+  whichever is later. the hours are only today's, so it stops at midnight"""
+  h = time.localtime(time.time())[3]
+  end = min(24, max(h + RAIN_CHANCE_MIN_HOURS, RAIN_CHANCE_UNTIL_HOUR))
+  return max(info["rain_%_hours"][h:end])
+
 MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]

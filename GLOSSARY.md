@@ -28,6 +28,10 @@ _Avoid_: Forecast, summary
 Three columns on the weather screen against a scale that fits today: it runs from 0° (or -5° if it's freezing) up to at least 10°. The ruler marks every 5° (every 10° on wide scales), with freezing point in icy blue. The range bar beside it fills today's low to high, and the now dot beside that marks the current temperature.
 _Avoid_: Thermometer, gauge
 
+**Rain chance**:
+The number on the weather screen: the highest hourly chance of rain still ahead today, looking until 9pm or three hours ahead, whichever is later, and never past midnight. So by day it answers "will I need a coat while I'm out", and in the evening "will it rain soon".
+_Avoid_: Daily chance of rain, rain today
+
 **Simulator**:
 A window on the Mac that draws screens the way the display would, so they can be iterated on without the board.
 _Avoid_: Emulator, preview
