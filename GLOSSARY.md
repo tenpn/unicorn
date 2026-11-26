@@ -24,6 +24,10 @@ _Avoid_: Data, response, payload
 The current weather in words, such as "Overcast" or "Patchy light drizzle", which the weather screen shows as an icon.
 _Avoid_: Forecast, summary
 
+**Temperature scale**:
+Three columns on the weather screen against a scale that fits today: it runs from 0° (or -5° if it's freezing) up to at least 10°. The ruler marks every 5° (every 10° on wide scales), with freezing point in icy blue. The range bar beside it fills today's low to high, and the now dot beside that marks the current temperature.
+_Avoid_: Thermometer, gauge
+
 **Simulator**:
 A window on the Mac that draws screens the way the display would, so they can be iterated on without the board.
 _Avoid_: Emulator, preview

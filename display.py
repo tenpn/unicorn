@@ -27,6 +27,11 @@ LIGHT_BLUE = graphics.create_pen(100, 100, 255)
 DARK_BLUE = graphics.create_pen(50, 50, 200)
 BLUE = graphics.create_pen(50, 50, 255)
 
+# a little lighter than DARK_GREY, for marks on a dim background
+DARK_GREY_MARK = graphics.create_pen(35,35,35)
+# a dim icy blue, for marking freezing point on a dim background
+DIM_ICY_BLUE = graphics.create_pen(40,90,120)
+
 TEMPERATURE_COLOURS = [
   # below temp, pen
   [-3, graphics.create_pen(50,50,255)],

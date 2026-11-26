@@ -1,6 +1,6 @@
 from galactic import GalacticUnicorn
 from display import graphics, get_col_for_temp, \
-  BLACK, GREY, LIGHT_GREY, YELLOW, LIGHT_PURPLE, PURPLE, RED, GREEN, ORANGE, LIGHT_BLUE, DARK_BLUE, BLUE
+  BLACK, DARK_GREY, DARK_GREY_MARK, DIM_ICY_BLUE, GREY, LIGHT_GREY, YELLOW, LIGHT_PURPLE, PURPLE, RED, GREEN, ORANGE, LIGHT_BLUE, DARK_BLUE, BLUE
 import icons
 import math
 import time
@@ -41,22 +41,64 @@ def condition_category(condition: str) -> str:
         return category
   return "cloud"
 
+# the temperature scale's ends snap outwards to multiples of this
+TEMP_SCALE_SNAP = 5
+# the top of the scale is never below this, so mild days don't fill the whole column
+TEMP_SCALE_MIN_TOP = 10
+# ruler marks are every 5 degrees, or every 10 if that would put them closer than this many rows
+TEMP_SCALE_MARK_MIN_ROWS = 2.5
+
+def temp_scale_ends(low: float, high: float) -> tuple[int, int]:
+  """(top, bottom) of the temperature scale: 0 or -5 if it's freezing, up to at least 10"""
+  top = max(TEMP_SCALE_MIN_TOP, math.ceil(high / TEMP_SCALE_SNAP) * TEMP_SCALE_SNAP)
+  bottom = 0 if low >= 0 else -TEMP_SCALE_SNAP
+  return (top, bottom)
+
+def temp_scale_row(temp: float, top: int, bottom: int) -> int:
+  """row from the top of the temperature scale nearest to temp, clamped to the display"""
+  step = (top - bottom) / (GalacticUnicorn.HEIGHT - 1)
+  row = round((top - temp) / step)
+  return max(0, min(GalacticUnicorn.HEIGHT - 1, row))
+
 def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
   (icon, pen, dot_pen) = CONDITION_ICONS[condition_category(info["condition"])]
   icons.draw(graphics, icon, 0, y-1, pen,
              second_pen=None if dot_pen is None else lambda _x, _y: dot_pen)
   
+  # temperature scale: a ruler, today's range as a bar, and the current temp as a dot
+  col = 11
+  temp_now = info["temp_now"]
+  # the current temp counts too, so its dot is never clamped when it's outside the forecast
+  (top, bottom) = temp_scale_ends(min(info["temp_min"], temp_now), max(info["temp_max"], temp_now))
+
+  # ruler: a dim line, with lighter marks on the rows nearest each multiple of 5 (or 10, on
+  # wide scales), and 0 in icy blue
+  step = (top - bottom) / (GalacticUnicorn.HEIGHT - 1)
+  mark_every = TEMP_SCALE_SNAP if TEMP_SCALE_SNAP / step >= TEMP_SCALE_MARK_MIN_ROWS else 2*TEMP_SCALE_SNAP
+  graphics.set_pen(DARK_GREY)
+  graphics.line(col, y-1, col, y-1+GalacticUnicorn.HEIGHT)
+  # from the first multiple of mark_every, so a -5 bottom doesn't shift 10-degree marks to -5, 5, ...
+  for t in range(math.ceil(bottom / mark_every) * mark_every, top+1, mark_every):
+    graphics.set_pen(DIM_ICY_BLUE if t == 0 else DARK_GREY_MARK)
+    graphics.pixel(col, y-1+temp_scale_row(t, top, bottom))
+
+  row_max = temp_scale_row(info["temp_max"], top, bottom)
+  row_min = temp_scale_row(info["temp_min"], top, bottom)
+  for row in range(row_max, row_min+1):
+    graphics.set_pen(get_col_for_temp(top - row*step))
+    graphics.pixel(col+1, y-1+row)
+
+  graphics.set_pen(get_col_for_temp(temp_now))
+  graphics.pixel(col+2, y-1+temp_scale_row(temp_now, top, bottom))
+
   # whole degrees: decimals are too fine-grained, and they crowd out the rain chance
-  col = 10
   temp_max = round(info["temp_max"])
-  icons.draw(graphics, icons.UP_ARROW, col, y-1, GREY)
   graphics.set_pen(get_col_for_temp(temp_max))
-  graphics.text(str(temp_max), col+7, y-2, scale=0.5)
-  
+  graphics.text(str(temp_max), col+4, y-2, scale=0.5)
+
   temp_min = round(info["temp_min"])
-  icons.draw(graphics, icons.DOWN_ARROW, col, y+5, GREY)
   graphics.set_pen(get_col_for_temp(temp_min))
-  graphics.text(str(temp_min), col+7, y+4, scale=0.5)
+  graphics.text(str(temp_min), col+4, y+4, scale=0.5)
   
   # rain chance right-aligned, so wide temperatures can't push it off the edge
   rain_chance = info["rain_%_today"]
