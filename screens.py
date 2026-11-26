@@ -70,7 +70,8 @@ def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
              second_pen=None if dot_pen is None else lambda _x, _y: dot_pen)
   
   # temperature scale: a ruler, today's range as a bar, and the current temp as a dot
-  col = 11
+  # the column after the 9-wide Condition icon and a gap
+  col = 10
   temp_now = info["temp_now"]
   # the current temp counts too, so its dot is never clamped when it's outside the forecast
   (top, bottom) = temp_scale_ends(min(info["temp_min"], temp_now), max(info["temp_max"], temp_now))
@@ -95,29 +96,51 @@ def draw_weather(info: dict, y: int, time_on_screen: float) -> None:
   graphics.set_pen(get_col_for_temp(temp_now))
   graphics.pixel(col+2, y-1+temp_scale_row(temp_now, top, bottom))
 
-  # whole degrees: decimals are too fine-grained, and they crowd out the rain chance
-  temp_max = round(info["temp_max"])
-  graphics.set_pen(get_col_for_temp(temp_max))
-  graphics.text(str(temp_max), col+4, y-2, scale=0.5)
+  # whole degrees: decimals are too fine-grained, and they crowd out the rain chance.
+  # in the 3x5 digits, to leave the clock room
+  temp_max = str(round(info["temp_max"]))
+  icons.draw_digits(graphics, temp_max, col+4, y-1, get_col_for_temp(info["temp_max"]))
 
-  temp_min = round(info["temp_min"])
-  graphics.set_pen(get_col_for_temp(temp_min))
-  graphics.text(str(temp_min), col+4, y+4, scale=0.5)
-  
-  # rain chance right-aligned, so wide temperatures can't push it off the edge
-  rain_chance = get_rain_chance(info)
+  temp_min = str(round(info["temp_min"]))
+  icons.draw_digits(graphics, temp_min, col+4, y+5, get_col_for_temp(info["temp_min"]))
+
+  # the rain chance goes on the bottom row, centred under the falling rain. both are as wide as
+  # 99 and right-aligned against the Screen timer in the last column, so the clock always has
+  # the same room on that side.
+  # capped at 99 to save room for the clock: 100% and 99% mean the same when leaving the house
+  rain_chance = min(99, get_rain_chance(info))
   rain_chance_str = str(rain_chance)
-  rain_col = GalacticUnicorn.WIDTH - 1 - graphics.measure_text(rain_chance_str, scale=0.5)
+  rain_block_col = GalacticUnicorn.WIDTH - 1 - len(icons.RAIN[0])
+  rain_col = rain_block_col + (len(icons.RAIN[0]) - icons.digits_width(rain_chance_str)) // 2
   rain_animate = math.floor(time_on_screen*1.5)
-  icons.draw(graphics, icons.RAIN, rain_col-7, y, LIGHT_BLUE, y_scroll=-rain_animate)
-  
+  # only the top 5 rows, above the % and a blank row
+  icons.draw(graphics, icons.RAIN, rain_block_col, y-1, LIGHT_BLUE, y_scroll=-rain_animate, rows=5)
+
   rain_colour = PURPLE if rain_chance > 70 \
     else LIGHT_PURPLE if rain_chance > 30 \
     else GREEN if rain_chance == 0 \
     else LIGHT_GREY
-  graphics.set_pen(rain_colour)
-  graphics.text(rain_chance_str, rain_col, y+1, scale=0.5)
-  
+  icons.draw_digits(graphics, rain_chance_str, rain_col, y+5, rain_colour)
+
+  # vertically centred, between the temps and the rain
+  temps_end = col+4 + max(icons.digits_width(temp_max), icons.digits_width(temp_min))
+  draw_clock_row(temps_end, rain_block_col, y+1)
+
+def draw_clock_row(left: int, right: int, text_y: int) -> None:
+  """24h clock with no colon, a column between the hours and minutes, which are also told
+  apart by their greys. centred between left (the first free column) and right (the first
+  used one)"""
+  (_,_,_,h,m,_,_,_) = time.localtime(time.time())
+  hours = f"{h:02d}"
+  minutes = f"{m:02d}"
+  hours_width = graphics.measure_text(hours, scale=0.5)
+  width = hours_width + 1 + graphics.measure_text(minutes, scale=0.5)
+  x = left + (right - left - width) // 2
+  graphics.set_pen(LIGHT_GREY)
+  graphics.text(hours, x, text_y, scale=0.5)
+  graphics.set_pen(GREY)
+  graphics.text(minutes, x + hours_width + 1, text_y, scale=0.5)
+
 def get_rain_chance(info: dict) -> int:
   """the highest hourly chance of rain from this hour until 9pm or 3 hours on,
   whichever is later. the hours are only today's, so it stops at midnight"""
