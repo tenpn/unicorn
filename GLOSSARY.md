@@ -12,6 +12,18 @@ _Avoid_: Row, panel, page, card
 A screen the carousel only includes on certain days, and skips on the rest.
 _Avoid_: Seasonal screen, optional screen
 
+**Christmas screen**:
+An occasional screen shown from December 1st to Christmas Eve. It shows the sleeps left, with Santa's procession travelling a step further across the display each day, under a string of fairy lights.
+_Avoid_: Countdown screen, advent screen, xmas screen
+
+**Procession**:
+A present in the back of Santa's sleigh, Santa's face and Rudolph's face in a row along the bottom, Rudolph in front, travelling left to right across the Christmas screen through December.
+_Avoid_: Sleigh, team, sprite
+
+**Sleeps**:
+The nights left until Christmas Day: 24 on December 1st, 1 on Christmas Eve. It goes down at midnight.
+_Avoid_: Days until Christmas, countdown
+
 **Line**:
 One line of text inside a screen. A screen fits two of them, top and bottom.
 _Avoid_: Row

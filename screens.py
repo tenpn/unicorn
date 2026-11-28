@@ -1,6 +1,6 @@
 from galactic import GalacticUnicorn
 from display import graphics, get_col_for_temp, \
-  BLACK, DARK_GREY, DARK_GREY_MARK, DIM_ICY_BLUE, GREY, LIGHT_GREY, YELLOW, LIGHT_PURPLE, PURPLE, RED, GREEN, ORANGE, LIGHT_BLUE, DARK_BLUE, BLUE
+  BLACK, DARKER_GREY, DARK_GREY, DARK_GREY_MARK, DIM_ICY_BLUE, GREY, LIGHT_GREY, YELLOW, LIGHT_PURPLE, PURPLE, RED, GREEN, ORANGE, LIGHT_BLUE, DARK_BLUE, BLUE
 import icons
 import math
 import time
@@ -290,16 +290,119 @@ def draw_trains(info: dict, y: int, time_on_screen: float) -> None:
     graphics.text(str(departure), col, line_y, scale=0.5)  
     col += departure_width
 
+# the Christmas screen shows from December 1st until this day
+CHRISTMAS_LAST_DAY = 24
+# usable columns, leaving the right edge for the screen timer and heap status
+CHRISTMAS_COLUMNS = GalacticUnicorn.WIDTH - 1
+# the procession, back to front: the gift's in the back of Santa's sleigh.
+# with this many blank columns between icons
+PROCESSION = [icons.PROCESSION_GIFT, icons.SANTA_FACE, icons.RUDOLPH_FACE]
+PROCESSION_GAP = 1
+# sleeps' font, whose digits are this many rows tall: the same as icons.ZZ
+SLEEPS_FONT = "bitmap8"
+SLEEPS_FONT_HEIGHT = 7
+# on December 1st only this many of Rudolph's right-hand columns show
+PROCESSION_FIRST_COLUMNS = 5
+# the procession ripples: each icon hops up a pixel for HOP_S, the next one
+# HOP_STAGGER_S after the one in front, then all rest for HOP_PAUSE_S
+HOP_S = 0.25
+HOP_STAGGER_S = 0.2
+HOP_PAUSE_S = 2.0
+# fairy lights along the top of the Christmas screen: a bulb every
+# LIGHTS_SPACING columns, its colour stepping along LIGHT_COLOURS every LIGHTS_STEP_S
+LIGHTS_SPACING = 4
+LIGHTS_STEP_S = 0.5
+LIGHT_COLOURS = [RED, GREEN, YELLOW, BLUE]
+
+def christmas_shown(now: tuple) -> bool:
+  """the Christmas screen's check: December 1st to CHRISTMAS_LAST_DAY"""
+  return now[1] == 12 and now[2] <= CHRISTMAS_LAST_DAY
+
+def procession_x(monthday: int, width: int) -> int:
+  """left edge of the procession: just PROCESSION_FIRST_COLUMNS of Rudolph
+  peeking in from the left on the 1st, touching the right on Christmas Eve"""
+  first = PROCESSION_FIRST_COLUMNS - width
+  last = CHRISTMAS_COLUMNS - width
+  return round(first + (monthday - 1) * (last - first) / 23)
+
+def hop_rows(icon_from_front: int, time_on_screen: float) -> int:
+  """1 while this icon is up in the procession's ripple, else 0"""
+  cycle = HOP_STAGGER_S * (len(PROCESSION) - 1) + HOP_S + HOP_PAUSE_S
+  t = time_on_screen % cycle - icon_from_front * HOP_STAGGER_S
+  return 1 if 0 <= t < HOP_S else 0
+
+def draw_sleeps(sleeps: int, x: int, top: int) -> None:
+  """sleeps on the bottom row in SLEEPS_FONT, as tall as ZZ, with ZZ climbing from its right"""
+  digits = str(sleeps)
+  graphics.set_font(SLEEPS_FONT)
+  graphics.set_pen(LIGHT_GREY)
+  graphics.text(digits, x, top + GalacticUnicorn.HEIGHT - SLEEPS_FONT_HEIGHT, scale=1)
+  digits_width = graphics.measure_text(digits, scale=1)
+  graphics.set_font("bitmap6")
+  icons.draw(graphics, icons.ZZ, x + digits_width + 1, top + GalacticUnicorn.HEIGHT - len(icons.ZZ), DIM_ICY_BLUE)
+
+def sleeps_width(sleeps: int) -> int:
+  graphics.set_font(SLEEPS_FONT)
+  digits_width = graphics.measure_text(str(sleeps), scale=1)
+  graphics.set_font("bitmap6")
+  return digits_width + 1 + len(icons.ZZ[0])
+
+def draw_fairy_lights(top: int, time_on_screen: float) -> None:
+  """a string of lights along the top, their colours stepping along LIGHT_COLOURS"""
+  step = math.floor(time_on_screen / LIGHTS_STEP_S)
+  for i in range(CHRISTMAS_COLUMNS // LIGHTS_SPACING):
+    bulb_x = LIGHTS_SPACING // 2 + i * LIGHTS_SPACING
+    # the wire droops between bulbs
+    graphics.set_pen(DARKER_GREY)
+    graphics.pixel(bulb_x - 2, top)
+    graphics.pixel(bulb_x - 1, top)
+    graphics.pixel(bulb_x + 1, top)
+    graphics.set_pen(LIGHT_COLOURS[(i + step) % len(LIGHT_COLOURS)])
+    graphics.pixel(bulb_x, top + 1)
+
+def draw_christmas(info: dict, y: int, time_on_screen: float) -> None:
+  (_,_,monthday,_,_,_,_,_) = time.localtime(time.time())
+  top = y - 1
+  sleeps = 25 - monthday
+
+  icon_width = len(PROCESSION[0][0])
+  icon_height = len(PROCESSION[0])
+  width = len(PROCESSION) * icon_width + (len(PROCESSION) - 1) * PROCESSION_GAP
+  x = procession_x(monthday, width)
+
+  # sleeps goes centred in whichever gap beside the procession is wider
+  left_gap = x
+  right_gap = CHRISTMAS_COLUMNS - (x + width)
+  block_width = sleeps_width(sleeps)
+  if right_gap >= left_gap:
+    block_x = x + width + (right_gap - block_width + 1) // 2
+  else:
+    block_x = (left_gap - block_width) // 2
+
+  draw_fairy_lights(top, time_on_screen)
+
+  draw_sleeps(sleeps, block_x, top)
+
+  # along the bottom edge, hopping up into the row above
+  icon_top = top + GalacticUnicorn.HEIGHT - icon_height
+  for i in range(len(PROCESSION)):
+    icon_x = x + i * (icon_width + PROCESSION_GAP)
+    hop = hop_rows(len(PROCESSION) - 1 - i, time_on_screen)
+    icons.draw_palette(graphics, PROCESSION[i], icons.CHRISTMAS_PALETTE, icon_x, icon_top - hop)
+
 # the carousel shows these in order, skipping occasional screens on days they're not shown
 SCREENS: list[Screen] = [
   #draw_clock,
+  draw_christmas,
   draw_weather,
   draw_trains,
   draw_timeline,
 ]
 
 # occasional screens, each with a check of whether it's shown on the day in time.localtime()
-OCCASIONAL_SCREENS: dict[Screen, Callable[[tuple], bool]] = {}
+OCCASIONAL_SCREENS: dict[Screen, Callable[[tuple], bool]] = {
+  draw_christmas: christmas_shown,
+}
 
 def todays_screens() -> list[Screen]:
   """SCREENS, minus occasional screens that aren't shown today"""
