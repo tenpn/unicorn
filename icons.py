@@ -271,3 +271,18 @@ def draw(graphics: PicoGraphics, icon: list[str], origin_x: int, origin_y: int, 
           
         # no offset here
         graphics.pixel(origin_x + x, origin_y + y)
+
+def draw_palette(graphics: PicoGraphics, icon: list[str], palette: dict[str, int], origin_x: int, origin_y: int) -> None:
+  """draws an icon in several colours: each letter is lit with its pen in palette.
+  spaces, and letters palette doesn't have, are unlit"""
+  last_pen = None
+  for y in range(len(icon)):
+    row = icon[y]
+    for x in range(len(row)):
+      pen = palette.get(row[x])
+      if pen is None:
+        continue
+      if pen != last_pen:
+        graphics.set_pen(pen)
+        last_pen = pen
+      graphics.pixel(origin_x + x, origin_y + y)
