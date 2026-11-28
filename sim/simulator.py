@@ -39,15 +39,17 @@ UNLIT_LED = (10, 10, 10)
 
 
 class SimClock:
-  """the wall clock the screens see. starts at the fixture's "at" (or --at)
-  and only moves while the simulator is playing"""
+  """the wall clock the screens see. starts at the fixture's "at" (or --at),
+  on today or --date, and only moves while the simulator is playing"""
 
-  def __init__(self, at: str) -> None:
+  def __init__(self, at: str, date: datetime.date | None = None) -> None:
+    self.date = date
     self.reset(at)
 
   def reset(self, at: str) -> None:
     h, m = fixtures.parse_at(at)
-    start = datetime.datetime.now().replace(hour=h, minute=m, second=0, microsecond=0)
+    day = self.date or datetime.date.today()
+    start = datetime.datetime(day.year, day.month, day.day, h, m)
     self.start_epoch = start.timestamp()
     self.elapsed = 0.0
 
@@ -166,6 +168,16 @@ def render(surface: "pygame.Surface", framebuffer: list[int], brightness: int, l
       else:
         surface.fill(((pen >> 16) & 0xff, (pen >> 8) & 0xff, pen & 0xff),
                      (x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE))
+
+
+def parse_date(date: str) -> datetime.date:
+  """MM-DD in this year, or YYYY-MM-DD"""
+  parts = [int(p) for p in date.split("-")]
+  if len(parts) == 2:
+    return datetime.date(datetime.date.today().year, parts[0], parts[1])
+  if len(parts) == 3:
+    return datetime.date(parts[0], parts[1], parts[2])
+  raise ValueError(f"--date {date} should be MM-DD or YYYY-MM-DD")
 
 
 def init_pygame(headless: bool) -> None:
@@ -292,7 +304,7 @@ def run_window(args: argparse.Namespace, fixture: fixtures.Fixture, clock: SimCl
         broken = True
 
     render(window, framebuffer, display.gu.brightness, led)
-    shown = f"{datetime.datetime.fromtimestamp(clock.epoch()):%H:%M:%S}"
+    shown = f"{datetime.datetime.fromtimestamp(clock.epoch()):%m-%d %H:%M:%S}"
     state = " broken" if broken else " paused" if paused else ""
     pygame.display.set_caption(f"{name}  t={t:5.2f}s  {shown}  {'LED' if led else 'raw'}{state}  [{fixture.path.stem}]")
     pygame.display.flip()
@@ -304,6 +316,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
   parser.add_argument("--fixture", help="sim/fixtures/NAME.json. default: the most recently modified one")
   parser.add_argument("--live", action="store_true", help="fetch info now, save it as a fixture and show it")
   parser.add_argument("--at", help="HH:MM the clock starts at. default: the fixture's")
+  parser.add_argument("--date", help="MM-DD or YYYY-MM-DD the clock starts on. default: today")
   parser.add_argument("--png", help="render one frame to this file and exit, no window")
   parser.add_argument("--t", type=float, default=3.0, help="with --png: the screen's time_on_screen, in seconds")
   parser.add_argument("--raw", action="store_true", help="show the framebuffer colours rather than LEDs")
@@ -314,10 +327,11 @@ def run(args: argparse.Namespace) -> None:
     fixture = choose_fixture(args)
     if args.at is not None:
       fixtures.parse_at(args.at)
+    date = parse_date(args.date) if args.date is not None else None
   except Exception as e:
     print(f"error: {e}", file=sys.stderr)
     sys.exit(1)
-  clock = SimClock(args.at or fixture.at)
+  clock = SimClock(args.at or fixture.at, date)
   install_time_shim(clock)
   if args.png:
     save_png(args, fixture, clock)

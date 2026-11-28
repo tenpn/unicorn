@@ -20,6 +20,7 @@ screen can be iterated on without uploading. it never touches the board.
 - `--live`: fetch Info now (needs proj_secrets.py), save it as
   sim/fixtures/YYYYMMDD-HHMM.json and show it
 - `--at HH:MM`: the time the clock starts at. default: the fixture's "at"
+- `--date MM-DD`: the day the clock starts on (or `YYYY-MM-DD`). default: today
 - `--png FILE --t SECONDS`: save one frame and exit, no window
 - `--raw`: framebuffer colours as square pixels rather than LEDs
 

@@ -13,6 +13,7 @@ Run it as `.venv/bin/python tools.py {upload,run,dump} [--port PORT]`. It's a wr
 - `dump` prints `crash.txt` from the board. It stops `main.py`, because mpremote has to send ctrl-C to get into the raw REPL. That can't be avoided. The user doesn't want `dump` to reset the board afterwards, so don't add that back.
 - Uploading or running resets the board, so ask the user before running `upload`, `run` or `dump`.
 - `sim` is the Simulator (code in `sim/`). It never touches the board, so run it freely, but only in its `--png` form: `.venv/bin/python tools.py sim --screen trains --png <scratchpad>/trains.png --t 3`, then Read the PNG. Use this to check any change to a screen. The window form is for the user.
+  - `--date MM-DD` sets the day the screens see, for anything that depends on the date.
   - `screens.py`, `display.py` and `icons.py` run unchanged against fakes in `sim/fakes/`, ported from pimoroni-pico. Using a `graphics` or `gu` method the fakes lack means adding it there too, ported from the C.
   - It draws one screen at rest, with no slide, Screen timer or status indicators. Its copy of the Info URL in `sim/fixtures.py` must match `main.py`.
   - Info fixtures live in `sim/fixtures/` (gitignored). `--live` fetches a fresh one.
