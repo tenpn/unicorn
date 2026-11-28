@@ -5,6 +5,13 @@ import icons
 import math
 import time
 
+# typing isn't on the board; this block is only seen by type checkers
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+  from typing import Callable
+  # a screen draws itself from info at y, time_on_screen seconds after it started sliding in
+  Screen = Callable[[dict, int, float], None]
+
 # how long a screen takes to slide in
 SCREEN_SCROLL_DURATION = 0.5
 
@@ -283,10 +290,19 @@ def draw_trains(info: dict, y: int, time_on_screen: float) -> None:
     graphics.text(str(departure), col, line_y, scale=0.5)  
     col += departure_width
 
-# the carousel shows these in order
-SCREENS = [
+# the carousel shows these in order, skipping occasional screens on days they're not shown
+SCREENS: list[Screen] = [
   #draw_clock,
   draw_weather,
   draw_trains,
   draw_timeline,
 ]
+
+# occasional screens, each with a check of whether it's shown on the day in time.localtime()
+OCCASIONAL_SCREENS: dict[Screen, Callable[[tuple], bool]] = {}
+
+def todays_screens() -> list[Screen]:
+  """SCREENS, minus occasional screens that aren't shown today"""
+  now = time.localtime(time.time())
+  return [screen for screen in SCREENS
+          if screen not in OCCASIONAL_SCREENS or OCCASIONAL_SCREENS[screen](now)]

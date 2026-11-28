@@ -1,6 +1,6 @@
 from galactic import GalacticUnicorn
 from display import graphics, gu, lerp, ease_in, BLACK, DARK_GREY
-from screens import SCREENS, SCREEN_SCROLL_DURATION
+from screens import todays_screens, SCREEN_SCROLL_DURATION
 from status import mem_used_y, draw_heap_status
 from lifecycle import feed_watchdog
 import time
@@ -38,8 +38,10 @@ def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
 
   while time.ticks_diff(time.ticks_ms(), start_tickms) < duration_ms:
     current_screen = 0
+    # checked once a cycle, so an occasional screen comes and goes between cycles
+    screens = todays_screens()
 
-    while current_screen < len(SCREENS):
+    while current_screen < len(screens):
 
       screen_start_tickms = time.ticks_ms()
       # drawing churns out garbage, so without a collect the reading mostly
@@ -49,7 +51,7 @@ def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
       mem_free = gc.mem_free()
       mem_alloc = gc.mem_alloc()
       mem_y = mem_used_y(mem_free, mem_alloc)
-      print(f"screen {SCREENS[current_screen].__name__} free {mem_free} alloc {mem_alloc} mem_y {mem_y}")
+      print(f"screen {screens[current_screen].__name__} free {mem_free} alloc {mem_alloc} mem_y {mem_y}")
 
       while True:
 
@@ -65,8 +67,8 @@ def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
 
         prev_y = int(lerp(1, GalacticUnicorn.HEIGHT+1, scroll_t))
         current_y = int(lerp(-GalacticUnicorn.HEIGHT, 1, scroll_t))
-        SCREENS[current_screen-1](info, prev_y, time_on_screen)
-        SCREENS[current_screen](info, current_y, time_on_screen)
+        screens[current_screen-1](info, prev_y, time_on_screen)
+        screens[current_screen](info, current_y, time_on_screen)
 
         # screen timer, counting down to the next screen
         graphics.set_pen(DARK_GREY)

@@ -8,6 +8,10 @@ A Galactic Unicorn LED matrix that shows local weather and train departures, cyc
 One full-display view of a single topic, such as trains, weather or the timeline. Only one screen is shown at a time, apart from the slide between two.
 _Avoid_: Row, panel, page, card
 
+**Occasional screen**:
+A screen the carousel only includes on certain days, and skips on the rest.
+_Avoid_: Seasonal screen, optional screen
+
 **Line**:
 One line of text inside a screen. A screen fits two of them, top and bottom.
 _Avoid_: Row
