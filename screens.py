@@ -290,8 +290,8 @@ def draw_trains(info: dict, y: int, time_on_screen: float) -> None:
     graphics.text(str(departure), col, line_y, scale=0.5)  
     col += departure_width
 
-# the Christmas screen shows from December 1st until this day
-CHRISTMAS_LAST_DAY = 24
+# the Christmas screen shows from December 1st until this day (Boxing Day)
+CHRISTMAS_LAST_DAY = 26
 # usable columns, leaving the right edge for the screen timer and heap status
 CHRISTMAS_COLUMNS = GalacticUnicorn.WIDTH - 1
 # the procession, back to front: the gift's in the back of Santa's sleigh.
@@ -313,6 +313,7 @@ HOP_PAUSE_S = 2.0
 LIGHTS_SPACING = 4
 LIGHTS_STEP_S = 0.5
 LIGHT_COLOURS = [RED, GREEN, YELLOW, BLUE]
+PRESENTS_GAP = 2
 
 def christmas_shown(now: tuple) -> bool:
   """the Christmas screen's check: December 1st to CHRISTMAS_LAST_DAY"""
@@ -360,9 +361,22 @@ def draw_fairy_lights(top: int, time_on_screen: float) -> None:
     graphics.set_pen(LIGHT_COLOURS[(i + step) % len(LIGHT_COLOURS)])
     graphics.pixel(bulb_x, top + 1)
 
+def draw_christmas_day(top: int, time_on_screen: float) -> None:
+  """presents along the bottom and fairy lights along the top"""
+  draw_fairy_lights(top, time_on_screen)
+
+  width = sum(len(present[0]) for present in icons.PRESENTS) + (len(icons.PRESENTS) - 1) * PRESENTS_GAP
+  present_x = (CHRISTMAS_COLUMNS - width) // 2
+  for present in icons.PRESENTS:
+    icons.draw_palette(graphics, present, icons.CHRISTMAS_PALETTE, present_x, top + GalacticUnicorn.HEIGHT - len(present))
+    present_x += len(present[0]) + PRESENTS_GAP
+
 def draw_christmas(info: dict, y: int, time_on_screen: float) -> None:
   (_,_,monthday,_,_,_,_,_) = time.localtime(time.time())
   top = y - 1
+  if monthday >= 25:
+    draw_christmas_day(top, time_on_screen)
+    return
   sleeps = 25 - monthday
 
   icon_width = len(PROCESSION[0][0])

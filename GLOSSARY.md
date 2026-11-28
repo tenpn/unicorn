@@ -13,7 +13,7 @@ A screen the carousel only includes on certain days, and skips on the rest.
 _Avoid_: Seasonal screen, optional screen
 
 **Christmas screen**:
-An occasional screen shown from December 1st to Christmas Eve. It shows the sleeps left, with Santa's procession travelling a step further across the display each day, under a string of fairy lights.
+An occasional screen shown from December 1st to 26th. Until Christmas Eve it shows the sleeps left, with Santa's procession travelling a step further across the display each day, under a string of fairy lights. On Christmas Day and Boxing Day the fairy lights hang over presents instead.
 _Avoid_: Countdown screen, advent screen, xmas screen
 
 **Procession**:
