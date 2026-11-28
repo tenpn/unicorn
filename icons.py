@@ -1,3 +1,5 @@
+from display import RED, WHITE, SKIN, BROWN, ANTLER, GREEN, YELLOW, BLUE, PURPLE
+
 # typing isn't on the board; this block is only seen by type checkers
 TYPE_CHECKING = False
 if TYPE_CHECKING:
@@ -151,6 +153,103 @@ TRAIN_SMOKES = [
 TRAIN_WHEELS = [
   (12,9), (13,9), 
   (13,8), (12,8),   
+]
+
+# stacked z's, small to big, for sleeps on the Christmas screen. the bottom
+# row lines up with the bottom of the number to its left
+ZZ = [
+  "   ####",
+  "     # ",
+  "    #  ",
+  "   ####",
+  "###    ",
+  " #     ",
+  "###    ",
+]
+
+# the Christmas icons, drawn with draw_palette. each letter is the same pen in all of them
+CHRISTMAS_PALETTE = {
+  "r": RED,
+  "w": WHITE,
+  "p": SKIN,
+  "b": BROWN,
+  "a": ANTLER,
+  "g": GREEN,
+  "y": YELLOW,
+  "u": BLUE,
+  "m": PURPLE,
+}
+# the procession on the Christmas screen. all 7x7
+SANTA_FACE = [
+  "  rrr  ",
+  " rrrrrw",
+  "wwwwwww",
+  "wp p pw",
+  "wpprppw",
+  "wwwwwww",
+  " wwwww ",
+]
+PROCESSION_GIFT = [
+  " rr rr ",
+  "  rrr  ",
+  "gggrggg",
+  "gggrggg",
+  "rrrrrrr",
+  "gggrggg",
+  "gggrggg",
+]
+RUDOLPH_FACE = [
+  "a a a a",
+  "aa   aa",
+  " bbbbb ",
+  "bb b bb",
+  " bbbbb ",
+  "  bbb  ",
+  "  brb  ",
+]
+# the presents on Christmas Day and Boxing Day, left to right, sitting on the bottom row
+PRESENTS = [
+  [
+    " w w ",
+    "  w  ",
+    "uuwuu",
+    "uuwuu",
+    "wwwww",
+    "uuwuu",
+    "uuwuu",
+    "uuwuu",
+  ],
+  [
+    "  yy yy  ",
+    "    y    ",
+    "rrrryrrrr",
+    "yyyyyyyyy",
+    "rrrryrrrr",
+    "rrrryrrrr",
+  ],
+  [
+    " r r ",
+    "  r  ",
+    "ggrgg",
+    "rrrrr",
+    "ggrgg",
+  ],
+  [
+    " w   w ",
+    "  w w  ",
+    "mmmwmmm",
+    "mmmwmmm",
+    "wwwwwww",
+    "mmmwmmm",
+    "mmmwmmm",
+  ],
+  [
+    " r  r ",
+    "  rr  ",
+    "yyrryy",
+    "rrrrrr",
+    "yyrryy",
+  ],
 ]
 
 # 3x5 digits and a minus sign, for numbers that have to fit tighter than bitmap6 allows

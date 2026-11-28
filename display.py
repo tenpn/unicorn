@@ -31,6 +31,11 @@ BLUE = graphics.create_pen(50, 50, 255)
 DARK_GREY_MARK = graphics.create_pen(35,35,35)
 # a dim icy blue, for marking freezing point on a dim background
 DIM_ICY_BLUE = graphics.create_pen(40,90,120)
+# for the Christmas icons
+WHITE = graphics.create_pen(255,255,255)
+SKIN = graphics.create_pen(255,140,100)
+BROWN = graphics.create_pen(110,50,15)
+ANTLER = graphics.create_pen(170,120,60)
 
 TEMPERATURE_COLOURS = [
   # below temp, pen
