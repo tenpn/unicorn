@@ -45,7 +45,7 @@ Annotate every function's parameters and return type, and any variable whose typ
 
 Pylance has no MicroPython stubs. These errors are expected and can be ignored:
 
-- `Import "machine" / "galactic" / "picographics" / "network" / "uasyncio" / "rp2" could not be resolved`
+- `Import "machine" / "galactic" / "picographics" / "network" / "uasyncio" / "rp2" / "micropython" could not be resolved`
 - the warning `Import "requests" could not be resolved from source`. Pyright's bundled CPython `requests` stubs still type-check the calls, and the subset the board uses (`get`, `timeout`, `status_code`, `json()`, `close()`) has the same signatures.
 - `"ticks_ms" / "ticks_diff" / "ticks_add" / "sleep_ms" is not a known attribute of module "time"`, plus `gc.mem_free`, `gc.mem_alloc` and `sys.print_exception`
 - tuple-size mismatches on `time.localtime()` (MicroPython returns 8 fields, CPython returns 9)

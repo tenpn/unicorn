@@ -1,6 +1,13 @@
 from galactic import GalacticUnicorn
 from picographics import PicoGraphics, DISPLAY_GALACTIC_UNICORN
 import math
+import micropython
+
+# typing isn't on the board; this block is only seen by type checkers.
+# ptr32 is a viper built-in, so it only needs declaring for them
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+  def ptr32(buf: object) -> list[int]: ...
 
 # create a PicoGraphics framebuffer to draw into
 graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
@@ -9,6 +16,36 @@ graphics = PicoGraphics(display=DISPLAY_GALACTIC_UNICORN)
 gu = GalacticUnicorn()
 
 gu.set_brightness(0.5)
+
+# flipped mode turns the whole display 180°. B toggles it in the carousel
+flipped = False
+
+def toggle_flipped() -> None:
+  global flipped
+  flipped = not flipped
+
+@micropython.viper
+def _reverse_pixels(buf: object) -> object:
+  # in row-major order, turning 180° is just reversing the pixels
+  p = ptr32(buf)
+  i = 0
+  j = 53*11 - 1
+  while i < j:
+    t = p[i]
+    p[i] = p[j]
+    p[j] = t
+    i += 1
+    j -= 1
+
+def show() -> None:
+  """send the framebuffer to the LEDs, turned 180° in flipped mode. the
+  framebuffer is put back afterwards, as some drawing builds on the last frame"""
+  if flipped:
+    _reverse_pixels(graphics)
+    gu.update(graphics)
+    _reverse_pixels(graphics)
+  else:
+    gu.update(graphics)
 
 # pen colours to draw with
 DARKER_GREY = graphics.create_pen(8,8,8)

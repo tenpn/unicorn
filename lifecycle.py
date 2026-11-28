@@ -1,5 +1,5 @@
 from galactic import GalacticUnicorn
-from display import graphics, gu, RED
+from display import graphics, show, RED
 import machine
 import time
 import gc
@@ -53,7 +53,7 @@ def reset_after(ms: int, reason: str) -> None:
   try:
     graphics.set_pen(RED)
     graphics.line(0, 0, 0, GalacticUnicorn.HEIGHT)
-    gu.update(graphics)
+    show()
   except Exception:
     pass
   sleep_ms_fed(ms)

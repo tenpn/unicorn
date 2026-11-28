@@ -1,5 +1,5 @@
 from galactic import GalacticUnicorn
-from display import graphics, gu, BLACK, YELLOW, RED, GREEN, ORANGE, DARKER_GREY, DIM_BLUE
+from display import graphics, show, BLACK, YELLOW, RED, GREEN, ORANGE, DARKER_GREY, DIM_BLUE
 from lifecycle import feed_watchdog
 import time
 import gc
@@ -21,24 +21,24 @@ def status_handler(mode: str, status: bool | None, ip: str) -> None:
   # flash while connecting
   for i in range(GalacticUnicorn.HEIGHT):
     graphics.line(0,0,0,i)
-    gu.update(graphics)
+    show()
     time.sleep(0.02)
 
   graphics.set_pen(BLACK)
   graphics.clear()
-  gu.update(graphics)
+  show()
 
   if status is not None:
     if status:
       print('Wifi connection successful!')
       graphics.set_pen(GREEN)
       graphics.rectangle(0, 0, 1, GalacticUnicorn.HEIGHT)
-      gu.update(graphics)
+      show()
     else:
       print('Wifi connection failed!')
       graphics.set_pen(RED)
       graphics.line(0,0,0,GalacticUnicorn.HEIGHT)
-      gu.update(graphics)
+      show()
 
 def draw_fetch_status(failures: int, pen: int) -> None:
   """show fetch progress in the status column, a third of its height per attempt.
@@ -53,7 +53,7 @@ def draw_fetch_status(failures: int, pen: int) -> None:
     bottom = (attempt+1) * GalacticUnicorn.HEIGHT // MAX_FETCH_FAILURES
     graphics.set_pen(pen if attempt == failures else ORANGE)
     graphics.rectangle(FETCH_STATUS_X, top, 1, bottom-top)
-  gu.update(graphics)
+  show()
 
 def mem_used_y(free: int, used: int) -> int:
   """y for the memory pixel: bottom row is 0% of the heap used, top row is 100%"""

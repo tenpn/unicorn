@@ -48,6 +48,10 @@ _Avoid_: Thermometer, gauge
 The number on the weather screen: the highest hourly chance of rain still ahead today, looking until 9pm or three hours ahead, whichever is later, and never past midnight. So by day it answers "will I need a coat while I'm out", and in the evening "will it rain soon".
 _Avoid_: Daily chance of rain, rain today
 
+**Flipped mode**:
+The whole display turned 180°, status indicators and all, for when the board is the other way up. B toggles it while the carousel is showing. It lasts until the board resets.
+_Avoid_: Rotation, upside down, inverted
+
 **Simulator**:
 A window on the Mac that draws screens the way the display would, so they can be iterated on without the board.
 _Avoid_: Emulator, preview

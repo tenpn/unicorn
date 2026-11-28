@@ -1,5 +1,5 @@
 from galactic import GalacticUnicorn
-from display import graphics, gu, lerp, ease_in, BLACK, DARK_GREY
+from display import graphics, gu, show, toggle_flipped, lerp, ease_in, BLACK, DARK_GREY
 from screens import todays_screens, SCREEN_SCROLL_DURATION
 from status import mem_used_y, draw_heap_status
 from lifecycle import feed_watchdog
@@ -13,10 +13,12 @@ SCREEN_PAUSE_DURATION = 12
 # last frame's button directions, so a press acts once rather than every frame it's held
 brightness_btn_prev = 0
 speed_btn_prev = 0
+flip_btn_prev = False
 
 def handle_buttons() -> None:
-  """brightness up/down change brightness. volume up/sleep lengthen/shorten SCREEN_PAUSE_DURATION"""
-  global SCREEN_PAUSE_DURATION, brightness_btn_prev, speed_btn_prev
+  """brightness up/down change brightness. volume up/sleep lengthen/shorten SCREEN_PAUSE_DURATION.
+  B toggles flipped mode"""
+  global SCREEN_PAUSE_DURATION, brightness_btn_prev, speed_btn_prev, flip_btn_prev
 
   brightness_btn = 1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_UP) \
     else -1 if gu.is_pressed(GalacticUnicorn.SWITCH_BRIGHTNESS_DOWN) \
@@ -31,6 +33,11 @@ def handle_buttons() -> None:
   if speed_btn != speed_btn_prev and speed_btn != 0:
     SCREEN_PAUSE_DURATION = max(0, SCREEN_PAUSE_DURATION + speed_btn)
   speed_btn_prev = speed_btn
+
+  flip_btn = gu.is_pressed(GalacticUnicorn.SWITCH_B)
+  if flip_btn and not flip_btn_prev:
+    toggle_flipped()
+  flip_btn_prev = flip_btn
 
 def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
   """animate through the screens until duration_ms has passed (checked after each full cycle)"""
@@ -81,7 +88,7 @@ def show_screens(info: dict, duration_ms: int, heap_frag_y: int) -> None:
         handle_buttons()
 
         # update the display
-        gu.update(graphics)
+        show()
         feed_watchdog()
 
         time.sleep(0.02)
